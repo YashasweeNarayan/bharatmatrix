@@ -11,6 +11,42 @@ if (!apiKey) {
 
 const client = new GoogleGenAI({ apiKey });
 
+/**
+ * Gemini's free tier returns 503 "high demand" fairly often. Retries with
+ * exponential backoff + jitter before giving up, so a transient spike
+ * doesn't surface as a user-facing error.
+ */
+async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  const maxAttempts = 4;
+  let lastErr: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const message = err instanceof Error ? err.message : String(err);
+      const isOverloaded =
+        message.includes("503") ||
+        message.includes("UNAVAILABLE") ||
+        message.includes("high demand");
+
+      if (!isOverloaded || attempt === maxAttempts) {
+        throw err;
+      }
+
+      const delayMs = 1000 * 2 ** (attempt - 1) + Math.random() * 300;
+      console.warn(
+        `[gemini] ${label} overloaded (attempt ${attempt}/${maxAttempts}), ` +
+          `retrying in ${Math.round(delayMs)}ms`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw lastErr;
+}
+
 export const EMBEDDING_MODEL = "gemini-embedding-2";
 export const EMBEDDING_DIMENSIONS = 768;
 export const CHAT_MODEL = "gemini-3.8-flash";
@@ -28,11 +64,17 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   async function worker() {
     while (cursor < texts.length) {
       const i = cursor++;
-      const response = await client.models.embedContent({
-        model: EMBEDDING_MODEL,
-        contents: texts[i],
-        config: { outputDimensionality: EMBEDDING_DIMENSIONS },
-      });
+      const response = await withRetry<
+        Awaited<ReturnType<typeof client.models.embedContent>>
+      >(
+        () =>
+          client.models.embedContent({
+            model: EMBEDDING_MODEL,
+            contents: texts[i],
+            config: { outputDimensionality: EMBEDDING_DIMENSIONS },
+          }),
+        "embedContent",
+      );
       const values = response.embeddings?.[0]?.values;
       if (!values) {
         throw new Error(`Embedding request returned no vector for chunk ${i}.`);
@@ -147,15 +189,21 @@ export async function answerFromContext(
   // moving target. generateContent has kept the same request/response
   // shape for years and is a much steadier foundation for a project that
   // can't be hand-tested before every deploy.
-  const response = await client.models.generateContent({
-    model: CHAT_MODEL,
-    contents: `Context passages:\n\n${contextBlock}\n\nQuestion: ${question}`,
-    config: {
-      systemInstruction,
-      responseMimeType: "application/json",
-      responseSchema: ANSWER_SCHEMA,
-    },
-  });
+  const response = await withRetry<
+    Awaited<ReturnType<typeof client.models.generateContent>>
+  >(
+    () =>
+      client.models.generateContent({
+        model: CHAT_MODEL,
+        contents: `Context passages:\n\n${contextBlock}\n\nQuestion: ${question}`,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: ANSWER_SCHEMA,
+        },
+      }),
+    "generateContent",
+  );
 
   const text = response.text;
   if (!text) {
