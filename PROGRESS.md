@@ -102,5 +102,11 @@ text in the preview.
   `eslint-disable-next-line @typescript-eslint/no-var-requires` comment in
   `extract.ts` referenced a rule not present in this project's ESLint config,
   which Next.js treats as a lint error during `next build`. Fixed by switching
-  that `require("pdf-parse")` to a plain ES import; pushed the fix. Waiting on
-  Muawiyah to confirm the redeploy succeeds and upload actually works.
+  that `require("pdf-parse")` to a plain ES import; pushed the fix.
+  Second build failure: pdf-parse's package entry file (`index.js`) runs
+  debug code at module-load time that reads a test PDF bundled with the
+  package — that file gets stripped by Next.js's serverless bundler, so the
+  build crashed with `ENOENT` while collecting page data for `/api/documents`.
+  Fixed by importing `pdf-parse/lib/pdf-parse.js` directly instead of the
+  package root, which skips that debug code. Pushed. Waiting on Muawiyah to
+  confirm the redeploy succeeds and upload actually works.
