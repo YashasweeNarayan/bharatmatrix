@@ -141,48 +141,29 @@ export async function answerFromContext(
     "never invent a number, date or fact that isn't literally present in " +
     "the passages.";
 
-  const interaction = (await client.interactions.create({
+  // Deliberately using the older generateContent method, not the newer
+  // Interactions API (client.interactions.create): that one has already
+  // shipped a breaking schema change once (May 2026) and the docs push a
+  // moving target. generateContent has kept the same request/response
+  // shape for years and is a much steadier foundation for a project that
+  // can't be hand-tested before every deploy.
+  const response = await client.models.generateContent({
     model: CHAT_MODEL,
-    system_instruction: systemInstruction,
-    input: `Context passages:\n\n${contextBlock}\n\nQuestion: ${question}`,
-    response_format: {
-      type: "text",
-      mime_type: "application/json",
-      schema: ANSWER_SCHEMA,
+    contents: `Context passages:\n\n${contextBlock}\n\nQuestion: ${question}`,
+    config: {
+      systemInstruction,
+      responseMimeType: "application/json",
+      responseSchema: ANSWER_SCHEMA,
     },
-  })) as unknown;
+  });
 
-  return JSON.parse(extractOutputText(interaction)) as AnswerResult;
-}
-
-/**
- * The SDK's published TS types don't yet match the Interactions API docs
- * (a `.d.ts` that lags a very new API), so this reads the response
- * defensively instead of trusting one exact property name/casing.
- */
-function extractOutputText(interaction: unknown): string {
-  const obj = interaction as Record<string, unknown>;
-
-  if (typeof obj?.output_text === "string") return obj.output_text;
-  if (typeof obj?.outputText === "string") return obj.outputText as string;
-
-  if (Array.isArray(obj?.steps)) {
-    const text = (obj.steps as Array<Record<string, unknown>>)
-      .filter((step) => step?.type === "model_output")
-      .flatMap((step) => (Array.isArray(step?.content) ? step.content : []))
-      .filter(
-        (block): block is { type: string; text: string } =>
-          !!block &&
-          typeof block === "object" &&
-          (block as Record<string, unknown>).type === "text",
-      )
-      .map((block) => block.text)
-      .join("");
-    if (text) return text;
+  const text = response.text;
+  if (!text) {
+    throw new Error(
+      "Model response had no text output — it may have been blocked or " +
+        "returned an unexpected shape.",
+    );
   }
 
-  throw new Error(
-    "Couldn't find text output on the model response — unexpected response shape: " +
-      JSON.stringify(obj).slice(0, 500),
-  );
+  return JSON.parse(text) as AnswerResult;
 }

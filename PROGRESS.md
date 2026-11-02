@@ -54,7 +54,7 @@ disk here, and will be pushed in one go once the connection is live.
       at aistudio.google.com/apikey) — see `.env.example`. Until that's set,
       uploads will fail at the embedding step (extraction still works, but
       the doc will show "failed").
-- [ ] Not yet tested against real documents — waiting on the API key
+- [ ] Not yet fully confirmed working end-to-end
 
 ### Step 4: Matrix grid UI
 - [ ] Spreadsheet grid: rows = documents, columns = questions
@@ -115,3 +115,17 @@ disk here, and will be pushed in one go once the connection is live.
   with that box checked, redeployed, confirmed working: uploaded real PDFs,
   both showed "ready" with correct page counts and readable extracted text.
   Muawiyah confirmed "Good go" — Step 2 done. Starting Step 3 (search/Q&A).
+- **2026-11-02** — Built Step 3 (chunking, Gemini embeddings, pgvector search,
+  grounded Q&A), using `client.interactions.create` (the Interactions API,
+  Google's newest chat surface). First build failure: its TS types don't
+  include `output_text` (docs show it; the published `.d.ts` hadn't caught
+  up) — worked around by reading the response defensively. That build
+  succeeded, but the actual API call then failed at runtime: "The legacy
+  Interactions API schema is no longer supported" — Google shipped a
+  breaking change to this API in May 2026, and the pinned `@google/genai`
+  version was resolving to a pre-break release. Given this API has broken
+  twice in one afternoon of it being brand new, switched away from it
+  entirely to `generateContent` — the older, long-stable method with the
+  same request/response shape for years (`config.systemInstruction`,
+  `config.responseSchema`, reading `response.text`). Pushed; waiting to
+  confirm Ask actually works end to end.
