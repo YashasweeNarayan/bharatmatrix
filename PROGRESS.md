@@ -95,3 +95,12 @@ text in the preview.
   pre-installed `tsc` (no real errors — only "module not found" from missing
   `node_modules`, which Vercel resolves on its own build servers). Repo isn't
   pushed yet — waiting on the GitHub connection to land.
+- **2026-11-02** — GitHub connected (account: YashasweeNarayan). Pushed Step 1,
+  confirmed live on Vercel. Built Step 2 (document upload + extraction) and
+  pushed it. Muawiyah connected Neon (Postgres) and Blob storage to the Vercel
+  project. First deploy of Step 2 failed to build — a stray
+  `eslint-disable-next-line @typescript-eslint/no-var-requires` comment in
+  `extract.ts` referenced a rule not present in this project's ESLint config,
+  which Next.js treats as a lint error during `next build`. Fixed by switching
+  that `require("pdf-parse")` to a plain ES import; pushed the fix. Waiting on
+  Muawiyah to confirm the redeploy succeeds and upload actually works.
