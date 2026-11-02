@@ -43,7 +43,8 @@ export default function Home() {
             Upload a company&apos;s annual reports, investor decks and audit
             reports. Ask questions across all of them at once. Every answer
             BharatMatrix gives you points back to the exact sentence and page
-            it came from — and it tells you when two documents disagree.
+            it came from — and flags it the moment any of your documents
+            disagree with each other.
           </p>
           <div className="mt-8 flex items-center gap-4">
             <a
