@@ -49,7 +49,10 @@ async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
 
 export const EMBEDDING_MODEL = "gemini-embedding-2";
 export const EMBEDDING_DIMENSIONS = 768;
-export const CHAT_MODEL = "gemini-3.8-flash";
+// gemini-3.8-flash is the newest flagship model, capped at just 20
+// requests/day on the free tier — unworkable for active development.
+// Lite models generally get a more generous free-tier daily quota.
+export const CHAT_MODEL = "gemini-3.5-flash-lite";
 
 /**
  * Embeds each text with its own request, at limited concurrency (the SDK's

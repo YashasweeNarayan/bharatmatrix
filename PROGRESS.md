@@ -127,5 +127,14 @@ disk here, and will be pushed in one go once the connection is live.
   twice in one afternoon of it being brand new, switched away from it
   entirely to `generateContent` — the older, long-stable method with the
   same request/response shape for years (`config.systemInstruction`,
-  `config.responseSchema`, reading `response.text`). Pushed; waiting to
-  confirm Ask actually works end to end.
+  `config.responseSchema`, reading `response.text`). Added retry-with-backoff
+  for transient 503 "high demand" errors. Then hit a hard wall: `gemini-3.8-
+  flash` (the flagship model) is capped at 20 requests/day on the free tier —
+  a 429 RESOURCE_EXHAUSTED confirmed it. Switched the chat model to
+  `gemini-3.5-flash-lite`, which should have a more generous free-tier daily
+  quota (Muawiyah chose staying on the free tier over enabling billing, for
+  now). Embeddings stay on `gemini-embedding-2` — that quota wasn't the one
+  that got hit. **Not yet confirmed whether the lite model's quota is
+  actually enough; if it also gets exhausted quickly, the real fix is
+  enabling billing in Google AI Studio (cheap at this project's scale, as
+  budgeted earlier).**
