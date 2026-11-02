@@ -2,4 +2,5 @@
 // These loose declarations keep the build from failing on missing types;
 // the actual shapes we rely on are narrowed with local types in src/lib/extract.ts.
 declare module "pdf-parse";
+declare module "pdf-parse/lib/pdf-parse.js";
 declare module "mammoth";

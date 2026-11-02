@@ -1,9 +1,13 @@
 import mammoth from "mammoth";
 import * as XLSX from "xlsx";
-// pdf-parse has no usable TS types; the ambient `declare module` in
-// src/types/declarations.d.ts makes this default import resolve as `any`,
-// narrowed with the local types below.
-import pdfParse from "pdf-parse";
+// Importing the internal module (not the package's `index.js`) is
+// deliberate: pdf-parse's index.js has a debug block that runs at
+// module-load time and tries to read a bundled test PDF from disk, which
+// breaks once Next.js bundles this for a serverless function. The internal
+// module skips that entirely. It also has no usable TS types; the ambient
+// `declare module` in src/types/declarations.d.ts makes this default import
+// resolve as `any`, narrowed with the local types below.
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 export type ExtractedPage = {
   ordinal: number;
