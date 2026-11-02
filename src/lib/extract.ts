@@ -1,10 +1,9 @@
 import mammoth from "mammoth";
 import * as XLSX from "xlsx";
-
-// pdf-parse has no usable TS types; we only touch a couple of fields,
+// pdf-parse has no usable TS types; the ambient `declare module` in
+// src/types/declarations.d.ts makes this default import resolve as `any`,
 // narrowed with the local types below.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfParse = require("pdf-parse");
+import pdfParse from "pdf-parse";
 
 export type ExtractedPage = {
   ordinal: number;
