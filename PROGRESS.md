@@ -30,13 +30,27 @@ disk here, and will be pushed in one go once the connection is live.
       cells resolving live with source refs + a contradiction flag), ink/
       saffron/teal visual identity
 - [x] Push to GitHub — https://github.com/YashasweeNarayan/bharatmatrix
-- [ ] Connect repo to Vercel, confirm live deploy
-- [ ] Set up Postgres (Neon or Supabase) + Vercel Blob storage, wire up env vars
+- [x] Connect repo to Vercel, confirm live deploy — https://bharatmatrix.vercel.app/
+- [ ] Set up Postgres (Neon) + Vercel Blob storage — **action needed from Muawiyah,
+      see below**
 
 ### Step 2: Document ingestion (Reader agent)
-- [ ] Upload UI (PDF/DOCX/XLSX, multi-file)
-- [ ] Text + table + page-number extraction
-- [ ] Test on 5 sample BSE/NSE annual reports
+- [x] Upload UI (PDF/DOCX/XLSX, multi-file, drag-and-drop) at `/workspace`
+- [x] Text + page/sheet-label extraction (PDF page-by-page, DOCX whole-doc,
+      XLSX one entry per sheet) — written, not yet tested against real files
+- [ ] **Blocked until storage is connected (see below), then test on real
+      BSE/NSE annual reports**
+
+**Action needed before this is testable:** in the Vercel dashboard, open the
+`bharatmatrix` project → **Storage** tab → **Create Database**:
+1. Add a **Postgres** store (Neon) → Connect to Project
+2. Add a **Blob** store → Connect to Project
+
+Both auto-inject their env vars (`DATABASE_URL` / `POSTGRES_URL` and
+`BLOB_READ_WRITE_TOKEN`) — nothing to copy/paste. Vercel redeploys
+automatically once connected. After that, upload a PDF at `/workspace` and
+confirm it shows "ready" with the right page count and sensible extracted
+text in the preview.
 
 ### Step 3: Search over documents
 - [ ] Chunking + embeddings + vector search (pgvector)

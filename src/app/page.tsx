@@ -1,3 +1,4 @@
+import Link from "next/link";
 import MatrixHero from "@/components/MatrixHero";
 
 export default function Home() {
@@ -24,12 +25,12 @@ export default function Home() {
             BharatMatrix
           </span>
         </div>
-        <a
-          href="#workspace"
+        <Link
+          href="/workspace"
           className="rounded-full bg-neutral-100 px-4 py-2 text-[13px] font-medium text-ink-950 transition-colors hover:bg-white"
         >
           Open workspace
-        </a>
+        </Link>
       </header>
 
       <section className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 pb-24 pt-10 md:grid-cols-2 md:gap-8 md:px-12 md:pt-20">
@@ -47,12 +48,12 @@ export default function Home() {
             disagree with each other.
           </p>
           <div className="mt-8 flex items-center gap-4">
-            <a
-              href="#workspace"
+            <Link
+              href="/workspace"
               className="rounded-full bg-saffron-500 px-5 py-2.5 text-[13px] font-medium text-ink-950 transition-colors hover:bg-saffron-400"
             >
               Open workspace
-            </a>
+            </Link>
             <span className="text-[13px] text-neutral-500">
               No finance background required.
             </span>
@@ -83,16 +84,6 @@ export default function Home() {
         <div className="flex items-center">
           <MatrixHero />
         </div>
-      </section>
-
-      <section
-        id="workspace"
-        className="relative z-10 border-t border-ink-700 px-6 py-24 text-center md:px-12"
-      >
-        <p className="font-mono text-[13px] text-neutral-500">
-          Workspace is under construction — Step 2 of the build (document
-          upload) is next.
-        </p>
       </section>
     </main>
   );

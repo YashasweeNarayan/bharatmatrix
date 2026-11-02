@@ -13,7 +13,12 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "clsx": "2.1.1",
-    "lucide-react": "0.456.0"
+    "lucide-react": "0.456.0",
+    "@vercel/blob": "0.27.1",
+    "postgres": "3.4.5",
+    "pdf-parse": "1.1.1",
+    "mammoth": "1.8.0",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "typescript": "5.6.3",
