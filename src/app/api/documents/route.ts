@@ -3,6 +3,8 @@ import { put } from "@vercel/blob";
 import { randomUUID } from "crypto";
 import { sql, ensureSchema } from "@/lib/db";
 import { extractDocument } from "@/lib/extract";
+import { chunkPages } from "@/lib/chunk";
+import { embedTexts } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -75,6 +77,25 @@ export async function POST(req: NextRequest) {
         await tx`
           insert into document_pages (document_id, ordinal, page_label, content)
           values (${doc.id}, ${page.ordinal}, ${page.label}, ${page.content})
+        `;
+      }
+    });
+
+    // Chunk + embed for search (Step 3). Kept out of the page-insert
+    // transaction above since it's a separate concern and the slower part —
+    // if this fails, the extracted pages are still saved and visible.
+    const chunks = chunkPages(
+      pages.map((p) => ({ label: p.label, content: p.content })),
+    );
+    const vectors = await embedTexts(chunks.map((c) => c.content));
+
+    await sql.begin(async (tx) => {
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const vectorLiteral = JSON.stringify(vectors[i]);
+        await tx`
+          insert into document_chunks (document_id, ordinal, page_label, content, embedding)
+          values (${doc.id}, ${chunk.ordinal}, ${chunk.pageLabel}, ${chunk.content}, ${vectorLiteral}::vector)
         `;
       }
       await tx`

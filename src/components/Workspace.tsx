@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { FileText, Loader2, Upload, X } from "lucide-react";
+import AskPanel from "@/components/AskPanel";
 
 type DocumentStatus = "processing" | "ready" | "failed";
 
@@ -259,6 +260,13 @@ export default function Workspace() {
           ))}
         </ul>
       </div>
+
+      <AskPanel
+        readyCount={docs.filter((d) => d.status === "ready").length}
+        filenameById={Object.fromEntries(
+          docs.map((d) => [d.id, d.filename]),
+        )}
+      />
     </div>
   );
 }

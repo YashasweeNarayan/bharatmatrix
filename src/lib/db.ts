@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { EMBEDDING_DIMENSIONS } from "@/lib/gemini";
 
 const connectionString =
   process.env.DATABASE_URL ||
@@ -28,6 +29,7 @@ export function ensureSchema(): Promise<void> {
   if (!schemaReady) {
     schemaReady = (async () => {
       await sql`create extension if not exists pgcrypto`;
+      await sql`create extension if not exists vector`;
 
       await sql`
         create table if not exists documents (
@@ -55,6 +57,22 @@ export function ensureSchema(): Promise<void> {
       await sql`
         create index if not exists document_pages_document_id_idx
         on document_pages (document_id)
+      `;
+
+      await sql`
+        create table if not exists document_chunks (
+          id uuid primary key default gen_random_uuid(),
+          document_id uuid not null references documents(id) on delete cascade,
+          ordinal int not null,
+          page_label text not null,
+          content text not null,
+          embedding vector(${sql.unsafe(String(EMBEDDING_DIMENSIONS))}) not null
+        )
+      `;
+
+      await sql`
+        create index if not exists document_chunks_document_id_idx
+        on document_chunks (document_id)
       `;
     })();
   }

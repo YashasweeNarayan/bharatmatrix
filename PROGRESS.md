@@ -34,27 +34,27 @@ disk here, and will be pushed in one go once the connection is live.
 - [ ] Set up Postgres (Neon) + Vercel Blob storage — **action needed from Muawiyah,
       see below**
 
-### Step 2: Document ingestion (Reader agent)
+### Step 2: Document ingestion (Reader agent) — DONE, confirmed working
 - [x] Upload UI (PDF/DOCX/XLSX, multi-file, drag-and-drop) at `/workspace`
 - [x] Text + page/sheet-label extraction (PDF page-by-page, DOCX whole-doc,
-      XLSX one entry per sheet) — written, not yet tested against real files
-- [ ] **Blocked until storage is connected (see below), then test on real
-      BSE/NSE annual reports**
-
-**Action needed before this is testable:** in the Vercel dashboard, open the
-`bharatmatrix` project → **Storage** tab → **Create Database**:
-1. Add a **Postgres** store (Neon) → Connect to Project
-2. Add a **Blob** store → Connect to Project
-
-Both auto-inject their env vars (`DATABASE_URL` / `POSTGRES_URL` and
-`BLOB_READ_WRITE_TOKEN`) — nothing to copy/paste. Vercel redeploys
-automatically once connected. After that, upload a PDF at `/workspace` and
-confirm it shows "ready" with the right page count and sensible extracted
-text in the preview.
+      XLSX one entry per sheet)
+- [x] Neon (Postgres) + Vercel Blob connected, confirmed on real PDF uploads
+      (status → "ready", correct page counts, readable extracted text)
 
 ### Step 3: Search over documents
-- [ ] Chunking + embeddings + vector search (pgvector)
-- [ ] Basic question → answer over uploaded docs, with source reference
+- [x] Chunking (900 chars, 150 overlap, page-label preserved per chunk)
+- [x] Embeddings via Gemini (`gemini-embedding-2`, 768-dim) + pgvector
+      cosine search in Postgres
+- [x] Q&A box on `/workspace`: asks `gemini-3.8-flash` over the top-10
+      matching chunks, forced to answer only from those passages and return
+      exact quotes as citations (this is the Analyst+Verifier logic, still
+      combined in one call — splitting them into two separate steps is
+      Step 5)
+- [ ] **Action needed:** add a `GEMINI_API_KEY` env var in Vercel (free key
+      at aistudio.google.com/apikey) — see `.env.example`. Until that's set,
+      uploads will fail at the embedding step (extraction still works, but
+      the doc will show "failed").
+- [ ] Not yet tested against real documents — waiting on the API key
 
 ### Step 4: Matrix grid UI
 - [ ] Spreadsheet grid: rows = documents, columns = questions
@@ -108,5 +108,10 @@ text in the preview.
   package — that file gets stripped by Next.js's serverless bundler, so the
   build crashed with `ENOENT` while collecting page data for `/api/documents`.
   Fixed by importing `pdf-parse/lib/pdf-parse.js` directly instead of the
-  package root, which skips that debug code. Pushed. Waiting on Muawiyah to
-  confirm the redeploy succeeds and upload actually works.
+  package root, which skips that debug code. Pushed. Build succeeded, but
+  upload still failed with 500 — turned out the Blob store's "Add a
+  read-write token env var" checkbox hadn't been ticked when it was first
+  created, so `BLOB_READ_WRITE_TOKEN` never existed. Recreated the Blob store
+  with that box checked, redeployed, confirmed working: uploaded real PDFs,
+  both showed "ready" with correct page counts and readable extracted text.
+  Muawiyah confirmed "Good go" — Step 2 done. Starting Step 3 (search/Q&A).
