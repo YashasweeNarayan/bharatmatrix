@@ -29,8 +29,8 @@ disk here, and will be pushed in one go once the connection is live.
       landing page with an animated "Matrix" grid hero (docs × questions,
       cells resolving live with source refs + a contradiction flag), ink/
       saffron/teal visual identity
-- [ ] Push to GitHub (`bharatmatrix` repo) — waiting on GitHub connection
-- [ ] Connect repo to Vercel, confirm live "hello world" deploy
+- [x] Push to GitHub — https://github.com/YashasweeNarayan/bharatmatrix
+- [ ] Connect repo to Vercel, confirm live deploy
 - [ ] Set up Postgres (Neon or Supabase) + Vercel Blob storage, wire up env vars
 
 ### Step 2: Document ingestion (Reader agent)
