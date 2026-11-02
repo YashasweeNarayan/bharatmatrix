@@ -141,7 +141,7 @@ export async function answerFromContext(
     "never invent a number, date or fact that isn't literally present in " +
     "the passages.";
 
-  const interaction = await client.interactions.create({
+  const interaction = (await client.interactions.create({
     model: CHAT_MODEL,
     system_instruction: systemInstruction,
     input: `Context passages:\n\n${contextBlock}\n\nQuestion: ${question}`,
@@ -150,7 +150,39 @@ export async function answerFromContext(
       mime_type: "application/json",
       schema: ANSWER_SCHEMA,
     },
-  });
+  })) as unknown;
 
-  return JSON.parse(interaction.output_text) as AnswerResult;
+  return JSON.parse(extractOutputText(interaction)) as AnswerResult;
+}
+
+/**
+ * The SDK's published TS types don't yet match the Interactions API docs
+ * (a `.d.ts` that lags a very new API), so this reads the response
+ * defensively instead of trusting one exact property name/casing.
+ */
+function extractOutputText(interaction: unknown): string {
+  const obj = interaction as Record<string, unknown>;
+
+  if (typeof obj?.output_text === "string") return obj.output_text;
+  if (typeof obj?.outputText === "string") return obj.outputText as string;
+
+  if (Array.isArray(obj?.steps)) {
+    const text = (obj.steps as Array<Record<string, unknown>>)
+      .filter((step) => step?.type === "model_output")
+      .flatMap((step) => (Array.isArray(step?.content) ? step.content : []))
+      .filter(
+        (block): block is { type: string; text: string } =>
+          !!block &&
+          typeof block === "object" &&
+          (block as Record<string, unknown>).type === "text",
+      )
+      .map((block) => block.text)
+      .join("");
+    if (text) return text;
+  }
+
+  throw new Error(
+    "Couldn't find text output on the model response — unexpected response shape: " +
+      JSON.stringify(obj).slice(0, 500),
+  );
 }
