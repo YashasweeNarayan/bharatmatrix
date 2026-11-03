@@ -1,12 +1,16 @@
 import { sql } from "@/lib/db";
 import { embedText, answerFromContext } from "@/lib/gemini";
+import { verifyGrounding } from "@/lib/verify";
 
 /**
  * Computes (or recomputes) one Matrix cell: answers `questionText` using
  * only the chunks of the one document `documentId`, top-6 by similarity,
- * and writes the result in. Scoped to a single document — this is what
- * makes it a per-document column answer rather than the cross-document
- * search the free-form Ask box does.
+ * then runs the Analyst's answer through the deterministic Verifier before
+ * writing it in — so a cell is only ever marked grounded once its quote
+ * has actually been confirmed against the source text, not just because
+ * the model said so. Scoped to a single document — this is what makes it
+ * a per-document column answer rather than the cross-document search the
+ * free-form Ask box does.
  */
 export async function computeCell(
   documentId: string,
@@ -44,6 +48,7 @@ export async function computeCell(
             answer = 'Nothing indexed for this document yet.',
             grounded = false,
             citations = '[]'::jsonb,
+            verification_note = null,
             error = null,
             updated_at = now()
         where document_id = ${documentId} and question_id = ${questionId}
@@ -51,15 +56,15 @@ export async function computeCell(
       return;
     }
 
-    const result = await answerFromContext(
-      questionText,
-      rows.map((r) => ({
-        documentId,
-        filename: doc.filename as string,
-        pageLabel: r.page_label as string,
-        content: r.content as string,
-      })),
-    );
+    const context = rows.map((r) => ({
+      documentId,
+      filename: doc.filename as string,
+      pageLabel: r.page_label as string,
+      content: r.content as string,
+    }));
+
+    const analystResult = await answerFromContext(questionText, context);
+    const result = verifyGrounding(analystResult, context);
 
     await sql`
       update matrix_cells
@@ -67,6 +72,7 @@ export async function computeCell(
           answer = ${result.answer},
           grounded = ${result.grounded},
           citations = ${JSON.stringify(result.citations)}::jsonb,
+          verification_note = ${result.verificationNote},
           error = null,
           updated_at = now()
       where document_id = ${documentId} and question_id = ${questionId}

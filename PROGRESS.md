@@ -81,8 +81,24 @@ disk here, and will be pushed in one go once the connection is live.
 - [x] Muawiyah confirmed "Good go" — Step 4 done
 
 ### Step 5: Analyst + Verifier agents
-- [ ] Split "find the answer" (Analyst) from "check it against source text" (Verifier)
-- [ ] Reject/flag ungrounded answers before they reach the UI
+- [x] Split "find the answer" (Analyst, `gemini.ts`) from "check it against
+      source text" (Verifier, new `src/lib/verify.ts`)
+- [x] Verifier is deterministic, not a second LLM call — it does an exact
+      (whitespace/quote-normalized) substring check of each claimed quote
+      against the real chunk text it says it came from, matched by
+      document + page. No extra Gemini quota spent; actually fixes the
+      thing the project exists to fix (a model confidently citing a quote
+      that was never really there)
+- [x] An answer is only ever stored/shown as `grounded: true` once the
+      Verifier has confirmed at least one citation for real; unconfirmed
+      citations are dropped before they reach the UI, never just hidden
+      behind a trust-me flag
+- [x] `verification_note` surfaced in both the Matrix evidence panel and
+      the Ask panel whenever the Verifier downgraded or trimmed the
+      Analyst's claim, so it's visible when it actually happens
+- [x] Wired into both call sites: `computeCell` (Matrix) and `/api/ask`
+      (free-form Q&A)
+- [ ] Not yet tested on the live site
 
 ### Step 6: Contradiction detection
 - [ ] Cross-document claim comparison
@@ -227,3 +243,20 @@ disk here, and will be pushed in one go once the connection is live.
   crashing. Starting Step 5 (split the single Analyst+Verifier call used
   everywhere so far into two separate steps, and reject/flag ungrounded
   answers before they ever reach the UI).
+- **2026-11-03** — Built Step 5. Decided against a second Gemini call for
+  the Verifier: an LLM grading its own (or another LLM's) citation is
+  still just another model's opinion, and doubling the Gemini calls would
+  hit the free tier's daily cap twice as fast. Instead wrote a
+  deterministic Verifier (`src/lib/verify.ts`) — normalizes whitespace and
+  quote characters, then checks whether the Analyst's claimed quote is an
+  actual substring of the specific document+page chunk it says it came
+  from. `grounded: true` now means "we found this exact text in the
+  source," not "the model said so." Citations that don't verify are
+  dropped before they're ever stored or shown; if none survive, the
+  answer is downgraded to not-grounded regardless of what the Analyst
+  claimed. Added a `verification_note` column to `matrix_cells` and
+  surfaced it in both the Matrix evidence panel and the Ask panel so a
+  downgrade is visible, not silent. Wired into `computeCell` and
+  `/api/ask`. Syntax-checked clean, pushed. Waiting on Muawiyah to test —
+  worth specifically trying a question the documents don't actually
+  answer, to see the Verifier catch it.

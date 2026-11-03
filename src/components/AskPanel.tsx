@@ -14,6 +14,7 @@ type AnswerResult = {
   answer: string;
   grounded: boolean;
   citations: Citation[];
+  verificationNote?: string | null;
 };
 
 type FilenameLookup = Record<string, string>;
@@ -121,6 +122,12 @@ export default function AskPanel({
               {result.grounded ? "grounded" : "not found"}
             </span>
           </div>
+
+          {result.verificationNote && (
+            <p className="mt-2 text-[12px] text-saffron-400/80">
+              Verifier: {result.verificationNote}
+            </p>
+          )}
 
           {result.citations.length > 0 && (
             <div className="mt-4 flex flex-col gap-2 border-t border-ink-700 pt-3">

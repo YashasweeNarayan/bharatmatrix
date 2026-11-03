@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
 import { embedText, answerFromContext } from "@/lib/gemini";
+import { verifyGrounding } from "@/lib/verify";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -69,15 +70,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await answerFromContext(
-      question,
-      rows.map((r) => ({
-        documentId: r.document_id as string,
-        filename: r.filename as string,
-        pageLabel: r.page_label as string,
-        content: r.content as string,
-      })),
-    );
+    const context = rows.map((r) => ({
+      documentId: r.document_id as string,
+      filename: r.filename as string,
+      pageLabel: r.page_label as string,
+      content: r.content as string,
+    }));
+    const analystResult = await answerFromContext(question, context);
+    const result = verifyGrounding(analystResult, context);
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json(

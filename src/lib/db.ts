@@ -105,6 +105,12 @@ export function ensureSchema(): Promise<void> {
         create index if not exists matrix_cells_question_id_idx
         on matrix_cells (question_id)
       `;
+
+      // Step 5: the deterministic Verifier can downgrade an answer the
+      // Analyst claimed was grounded — this records why, for transparency.
+      await sql`
+        alter table matrix_cells add column if not exists verification_note text
+      `;
     })();
   }
   return schemaReady;

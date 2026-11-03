@@ -19,6 +19,7 @@ type Cell = {
   answer: string | null;
   grounded: boolean | null;
   citations: Citation[] | null;
+  verification_note: string | null;
   error: string | null;
 };
 
@@ -375,6 +376,11 @@ export default function MatrixTable() {
                 {selected.grounded ? "grounded" : "not found"}
               </span>
             </div>
+            {selected.verification_note && (
+              <p className="mt-2 text-[12px] text-saffron-400/80">
+                Verifier: {selected.verification_note}
+              </p>
+            )}
             {citationsOf(selected).length > 0 && (
               <div className="mt-4 flex flex-col gap-2 border-t border-ink-700 pt-3">
                 {citationsOf(selected).map((c, i) => (

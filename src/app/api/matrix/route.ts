@@ -20,7 +20,8 @@ export async function GET() {
     select id, text from questions order by ordinal asc
   `;
   const cells = await sql`
-    select document_id, question_id, status, answer, grounded, citations, error
+    select document_id, question_id, status, answer, grounded, citations,
+           verification_note, error
     from matrix_cells
   `;
 

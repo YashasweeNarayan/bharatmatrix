@@ -149,7 +149,7 @@ const ANSWER_SCHEMA = {
   required: ["answer", "grounded", "citations"],
 };
 
-type ContextChunk = {
+export type ContextChunk = {
   documentId: string;
   filename: string;
   pageLabel: string;
@@ -157,10 +157,13 @@ type ContextChunk = {
 };
 
 /**
- * Answers a question using only the given context passages. This is the
- * Analyst + Verifier step combined into one call: the schema and system
- * instruction force every claim to carry an exact quote, and `grounded`
- * tells the caller whether to trust the answer at all.
+ * The Analyst step: answers a question using only the given context
+ * passages, and claims citations for its own answer. `grounded` here is
+ * the model's own self-assessment — worth keeping as a hint, but NOT
+ * trusted on its own: a model can misquote a passage and still believe
+ * it's grounded. See `verifyGrounding` in src/lib/verify.ts for the actual
+ * Verifier step, which checks each claimed quote against the real source
+ * text before anything is shown to the user.
  */
 export async function answerFromContext(
   question: string,
@@ -174,9 +177,12 @@ export async function answerFromContext(
     .join("\n\n---\n\n");
 
   const systemInstruction =
-    "You are the Analyst and Verifier for BharatMatrix, a document " +
-    "intelligence tool for business documents (annual reports, investor " +
-    "decks, audit reports). You answer questions ONLY using the numbered " +
+    "You are the Analyst for BharatMatrix, a document intelligence tool " +
+    "for business documents (annual reports, investor decks, audit " +
+    "reports). A separate Verifier will check your citations against the " +
+    "source text afterwards, so an inaccurate quote will be caught and " +
+    "the answer downgraded — but you should still answer questions ONLY " +
+    "using the numbered " +
     "context passages you are given — never from general knowledge or " +
     "things you already know about the company. Every claim in your " +
     "answer must be directly supported by at least one passage, quoted " +
