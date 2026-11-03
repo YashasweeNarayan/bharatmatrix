@@ -78,6 +78,7 @@ disk here, and will be pushed in one go once the connection is live.
       Muawiyah clicks Add column, Retry, or Fill missing cells, given the
       free tier's tight daily quota
 - [x] Confirmed tested on the live site, found a real bug, fixed (see log)
+- [x] Muawiyah confirmed "Good go" — Step 4 done
 
 ### Step 5: Analyst + Verifier agents
 - [ ] Split "find the answer" (Analyst) from "check it against source text" (Verifier)
@@ -220,3 +221,9 @@ disk here, and will be pushed in one go once the connection is live.
   **Follow-up needed:** Muawiyah has a few duplicate questions sitting in
   his matrix now from the repeated retries — safe to delete via each
   column's × button once the fix is confirmed live.
+- **2026-11-03** — Muawiyah confirmed "Good go" — Step 4 (Matrix grid) done
+  end-to-end: adding a question creates a column live, cells fill in one
+  by one with evidence, clicking a cell shows the source quote without
+  crashing. Starting Step 5 (split the single Analyst+Verifier call used
+  everywhere so far into two separate steps, and reject/flag ungrounded
+  answers before they ever reach the UI).
