@@ -35,6 +35,24 @@ function cellKey(documentId: string, questionId: string) {
   return `${documentId}::${questionId}`;
 }
 
+// citations comes from a Postgres jsonb column. It should already arrive as
+// a parsed array, but this guards against it ever being a JSON string, a
+// single object, or anything else malformed — rendering with `.map` on
+// something that isn't an array is what crashed the whole page on click.
+function citationsOf(cell: Cell | null): Citation[] {
+  const raw = cell?.citations;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export default function MatrixTable() {
   const [data, setData] = useState<MatrixData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -344,7 +362,7 @@ export default function MatrixTable() {
           <div className="mt-3 rounded-lg border border-ink-700 bg-ink-900/60 p-4">
             <div className="flex items-start justify-between gap-3">
               <p className="text-[14px] leading-relaxed text-neutral-200">
-                {selected.answer}
+                {String(selected.answer ?? "")}
               </p>
               <span
                 className={clsx(
@@ -357,15 +375,15 @@ export default function MatrixTable() {
                 {selected.grounded ? "grounded" : "not found"}
               </span>
             </div>
-            {selected.citations && selected.citations.length > 0 && (
+            {citationsOf(selected).length > 0 && (
               <div className="mt-4 flex flex-col gap-2 border-t border-ink-700 pt-3">
-                {selected.citations.map((c, i) => (
+                {citationsOf(selected).map((c, i) => (
                   <div key={i} className="text-[12px]">
                     <p className="font-mono text-matrix-500/80">
-                      [{c.pageLabel}]
+                      [{String(c?.pageLabel ?? "")}]
                     </p>
                     <p className="mt-0.5 italic text-neutral-400">
-                      &ldquo;{c.quote}&rdquo;
+                      &ldquo;{String(c?.quote ?? "")}&rdquo;
                     </p>
                   </div>
                 ))}
