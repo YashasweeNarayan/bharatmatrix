@@ -42,39 +42,61 @@ export default function MatrixTable() {
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [selected, setSelected] = useState<Cell | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const draining = useRef(false);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/matrix");
-    if (!res.ok) return;
+    if (!res.ok) {
+      setErrorMsg(`Couldn't load the matrix (${res.status}).`);
+      return;
+    }
     const json = await res.json();
     setData(json);
+    return json as MatrixData;
   }, []);
+
+  // Computes pending/stuck cells one at a time via /api/matrix/step,
+  // refreshing the grid after each so cells fill in live, instead of one
+  // request trying to await every cell's Gemini call at once (that reliably
+  // got killed by Vercel's ~10s request limit before it could respond).
+  const drain = useCallback(async () => {
+    if (draining.current) return;
+    draining.current = true;
+    try {
+      for (let i = 0; i < 200; i++) {
+        const res = await fetch("/api/matrix/step", { method: "POST" });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          setErrorMsg(
+            body?.detail || body?.error || `Step failed (${res.status}).`,
+          );
+          break;
+        }
+        const json = await res.json();
+        await refresh();
+        if (json.done) break;
+      }
+    } catch {
+      setErrorMsg("Lost connection while computing cells — try again.");
+    } finally {
+      draining.current = false;
+    }
+  }, [refresh]);
 
   useEffect(() => {
     refresh().finally(() => setLoading(false));
   }, [refresh]);
 
-  // Cheap DB-only poll while something is actively being computed — no
-  // Gemini calls happen just from polling this endpoint.
+  // Auto-resume if there are already pending/computing cells (e.g. from a
+  // question added just before a page reload) — this is finishing work
+  // already requested, not a new unprompted Gemini call.
   useEffect(() => {
     const hasActive = data?.cells.some(
       (c) => c.status === "pending" || c.status === "computing",
     );
-    if (hasActive && !pollRef.current) {
-      pollRef.current = setInterval(refresh, 2500);
-    }
-    if (!hasActive && pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-    return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
-    };
-  }, [data, refresh]);
+    if (hasActive) drain();
+  }, [data, drain]);
 
   const cellMap = new Map<string, Cell>();
   data?.cells.forEach((c) => cellMap.set(cellKey(c.document_id, c.question_id), c));
@@ -90,26 +112,45 @@ export default function MatrixTable() {
 
   async function addQuestion() {
     if (!newQuestion.trim() || addingQuestion) return;
+    setErrorMsg(null);
     setAddingQuestion(true);
     try {
-      await fetch("/api/questions", {
+      const res = await fetch("/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: newQuestion.trim() }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setErrorMsg(body?.error || `Couldn't add the question (${res.status}).`);
+        return;
+      }
       setNewQuestion("");
       await refresh();
+      drain();
+    } catch {
+      setErrorMsg("Lost connection while adding the question — try again.");
     } finally {
       setAddingQuestion(false);
     }
   }
 
   async function removeQuestion(id: string) {
-    await fetch(`/api/questions/${id}`, { method: "DELETE" });
-    await refresh();
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/questions/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setErrorMsg(`Couldn't remove the question (${res.status}).`);
+        return;
+      }
+      await refresh();
+    } catch {
+      setErrorMsg("Lost connection while removing the question — try again.");
+    }
   }
 
   async function retryCell(documentId: string, questionId: string) {
+    setErrorMsg(null);
     setData((prev) =>
       prev
         ? {
@@ -122,19 +163,36 @@ export default function MatrixTable() {
           }
         : prev,
     );
-    await fetch("/api/matrix/recompute", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ documentId, questionId }),
-    });
-    await refresh();
+    try {
+      const res = await fetch("/api/matrix/recompute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId, questionId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setErrorMsg(body?.detail || body?.error || `Retry failed (${res.status}).`);
+      }
+      await refresh();
+    } catch {
+      setErrorMsg("Lost connection while retrying — try again.");
+      await refresh();
+    }
   }
 
   async function backfill() {
+    setErrorMsg(null);
     setBackfilling(true);
     try {
-      await fetch("/api/matrix/backfill", { method: "POST" });
+      const res = await fetch("/api/matrix/backfill", { method: "POST" });
+      if (!res.ok) {
+        setErrorMsg(`Couldn't fill missing cells (${res.status}).`);
+        return;
+      }
       await refresh();
+      drain();
+    } catch {
+      setErrorMsg("Lost connection while filling missing cells — try again.");
     } finally {
       setBackfilling(false);
     }
@@ -158,6 +216,19 @@ export default function MatrixTable() {
 
   return (
     <div>
+      {errorMsg && (
+        <div className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-300">
+          <span>{errorMsg}</span>
+          <button
+            onClick={() => setErrorMsg(null)}
+            aria-label="Dismiss error"
+            className="flex-shrink-0 text-red-400 hover:text-red-200"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={newQuestion}

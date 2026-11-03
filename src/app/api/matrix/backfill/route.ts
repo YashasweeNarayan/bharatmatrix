@@ -1,22 +1,23 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
-import { computeCells } from "@/lib/matrix";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 10;
 
 /**
  * Fills in cells missing for the current (ready document × question) grid —
  * e.g. a document uploaded after some questions already existed. Explicitly
- * user-triggered (a button in the UI), not run automatically on a timer:
- * each missing cell costs a real Gemini call, and the free tier's daily
- * quota is tight enough that we don't want anything firing calls on a poll.
+ * user-triggered (a button in the UI), not run automatically on a timer.
+ * Only inserts the missing 'pending' rows and returns fast — it does NOT
+ * compute them here (see /api/matrix/step for why: a single request can't
+ * safely await a Gemini call per missing cell on Vercel's free plan). The
+ * client drains them afterwards one at a time via /api/matrix/step.
  */
 export async function POST() {
   await ensureSchema();
 
   const missing = await sql`
-    select d.id as document_id, q.id as question_id, q.text as question_text
+    select d.id as document_id, q.id as question_id
     from documents d
     cross join questions q
     left join matrix_cells mc
@@ -38,14 +39,6 @@ export async function POST() {
     where d.status = 'ready' and mc.id is null
     on conflict (document_id, question_id) do nothing
   `;
-
-  await computeCells(
-    missing.map((m) => ({
-      documentId: m.document_id as string,
-      questionId: m.question_id as string,
-      questionText: m.question_text as string,
-    })),
-  );
 
   return NextResponse.json({ filled: missing.length });
 }

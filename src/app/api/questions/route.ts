@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
-import { embedText } from "@/lib/gemini";
-import { computeCells } from "@/lib/matrix";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 10;
 
 export async function GET() {
   await ensureSchema();
@@ -47,23 +45,12 @@ export async function POST(req: NextRequest) {
     `;
   }
 
-  // Embed the question once and reuse it for every document's search,
-  // instead of re-embedding per document.
-  let questionEmbedding: number[] | undefined;
-  try {
-    questionEmbedding = await embedText(text);
-  } catch {
-    questionEmbedding = undefined; // each cell will embed on its own instead
-  }
-
-  await computeCells(
-    readyDocs.map((d) => ({
-      documentId: d.id as string,
-      questionId: question.id as string,
-      questionText: text,
-      questionEmbedding,
-    })),
-  );
-
+  // Deliberately NOT computing cells here. A single request on Vercel's
+  // free plan is capped around 10s no matter what `maxDuration` says, and
+  // awaiting a Gemini call per ready document blew well past that — the
+  // question row would get inserted but the response never came back, so
+  // the client never found out and the grid never refreshed. The client
+  // drives actual computation afterwards via repeated calls to
+  // /api/matrix/step, one cell per call.
   return NextResponse.json({ questionId: question.id });
 }

@@ -77,7 +77,7 @@ disk here, and will be pushed in one go once the connection is live.
       (no LLM call, just a DB read) — a Gemini call only happens when
       Muawiyah clicks Add column, Retry, or Fill missing cells, given the
       free tier's tight daily quota
-- [ ] Not yet tested on the live site
+- [x] Confirmed tested on the live site, found a real bug, fixed (see log)
 
 ### Step 5: Analyst + Verifier agents
 - [ ] Split "find the answer" (Analyst) from "check it against source text" (Verifier)
@@ -173,3 +173,26 @@ disk here, and will be pushed in one go once the connection is live.
   call except an explicit click (add a question, retry, or backfill).
   Syntax-checked clean, pushed. Waiting on Muawiyah to test on the live
   site before calling Step 4 done.
+- **2026-11-03** — Muawiyah tested: the matrix page itself loaded fine, but
+  adding a question didn't create a column. Root cause: `POST
+  /api/questions` (and `/api/matrix/backfill`) awaited a real Gemini call
+  for every ready document before responding — fine locally, but Vercel's
+  free/Hobby plan hard-caps a serverless request at ~10s no matter what
+  `maxDuration` says in code, so with any real retry/backoff in the mix
+  that request reliably got killed mid-flight. The question row itself did
+  get inserted (it commits immediately), but the HTTP response never came
+  back, and the frontend had no error handling around that `fetch`, so it
+  failed completely silently — no error, no refresh, the new column just
+  never appeared. Fixed by splitting the work in two: `POST /api/questions`
+  and `POST /api/matrix/backfill` now only insert the pending rows and
+  return immediately (fast, no Gemini calls in the request path at all);
+  a new `POST /api/matrix/step` computes exactly one pending cell per call
+  and reports how many remain. The UI now drives a drain loop — call
+  `/step`, refresh the grid, repeat until none remain — right after Add
+  question or Backfill, so cells fill in live one at a time instead of one
+  request trying to do all of them. The drain also auto-resumes on load if
+  it finds cells already stuck pending/computing (e.g. from before this
+  fix), and `/step` treats a cell stuck in 'computing' for over 2 minutes
+  as eligible again. Also added proper error surfacing in the UI (a
+  dismissable banner) for every action that talks to the server, so a
+  future failure is never silent again. Syntax-checked clean, pushed.
