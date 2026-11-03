@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
 
 export const runtime = "nodejs";
+// Without this, Next.js can statically cache this GET handler's response
+// (it reads no request-specific data, so it qualifies) and keep serving a
+// stale snapshot from the first time it ran — which is exactly why newly
+// added questions and freshly computed cells weren't showing up.
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   await ensureSchema();

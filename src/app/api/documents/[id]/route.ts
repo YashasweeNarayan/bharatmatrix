@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
 
 export const runtime = "nodejs";
+// See the comment in /api/matrix/route.ts — same static-caching gotcha.
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: NextRequest,

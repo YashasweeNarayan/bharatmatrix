@@ -196,3 +196,27 @@ disk here, and will be pushed in one go once the connection is live.
   as eligible again. Also added proper error surfacing in the UI (a
   dismissable banner) for every action that talks to the server, so a
   future failure is never silent again. Syntax-checked clean, pushed.
+- **2026-11-03** — Muawiyah tested again and sent the actual Network tab
+  payloads, which nailed down two real bugs:
+  1. Clicking a filled cell crashed the whole page ("Application error: a
+     client-side exception"). The payload showed why: `citations` comes
+     back as a JSON **string** (`"[{\"documentId\":...}]"`), not a parsed
+     array — Postgres's jsonb round-trips fine, but calling `.map()`
+     directly on a string blew up. Fixed with a `citationsOf()` helper
+     that parses it defensively before rendering.
+  2. "Add column" looked broken, but the payload showed it was actually
+     working on the server the whole time — Muawiyah just never saw the
+     new column appear, so he kept retrying, which created duplicate
+     questions in the DB. The real bug: `GET /api/matrix` (and
+     `/api/documents`) are plain Route Handlers with no dynamic request
+     data, which Next.js can treat as eligible for its Full Route Cache —
+     so after a mutation, the client's `refresh()` call could keep getting
+     served a stale cached snapshot instead of hitting the database again.
+     Added `export const dynamic = "force-dynamic"` to every GET route
+     (`/api/matrix`, `/api/questions`, `/api/documents`,
+     `/api/documents/[id]`) and `cache: "no-store"` on the client-side
+     fetches to them, to kill caching at both the server and browser
+     layer. Syntax-checked clean, pushed.
+  **Follow-up needed:** Muawiyah has a few duplicate questions sitting in
+  his matrix now from the repeated retries — safe to delete via each
+  column's × button once the fix is confirmed live.

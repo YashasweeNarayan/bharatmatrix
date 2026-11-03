@@ -8,6 +8,8 @@ import { embedTexts } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+// See the comment in /api/matrix/route.ts — same static-caching gotcha.
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   await ensureSchema();

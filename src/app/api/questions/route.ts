@@ -3,6 +3,8 @@ import { sql, ensureSchema } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const maxDuration = 10;
+// See the comment in /api/matrix/route.ts — same static-caching gotcha.
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   await ensureSchema();

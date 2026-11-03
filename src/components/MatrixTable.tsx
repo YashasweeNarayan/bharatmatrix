@@ -64,7 +64,7 @@ export default function MatrixTable() {
   const draining = useRef(false);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/matrix");
+    const res = await fetch("/api/matrix", { cache: "no-store" });
     if (!res.ok) {
       setErrorMsg(`Couldn't load the matrix (${res.status}).`);
       return;

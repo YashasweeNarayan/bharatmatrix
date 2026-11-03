@@ -40,7 +40,7 @@ export default function Workspace() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/documents");
+    const res = await fetch("/api/documents", { cache: "no-store" });
     if (!res.ok) return;
     const data = await res.json();
     setDocs(data.documents ?? []);
