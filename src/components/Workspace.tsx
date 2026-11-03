@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
+import Link from "next/link";
 import { FileText, Loader2, Upload, X } from "lucide-react";
 import AskPanel from "@/components/AskPanel";
 
@@ -116,9 +117,17 @@ export default function Workspace() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-14 md:px-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
-        Workspace
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
+          Workspace
+        </h1>
+        <Link
+          href="/matrix"
+          className="rounded-full border border-ink-700 px-4 py-2 text-[13px] font-medium text-neutral-300 transition-colors hover:border-ink-600 hover:text-white"
+        >
+          Open matrix →
+        </Link>
+      </div>
       <p className="mt-2 text-[14px] text-neutral-400">
         Upload annual reports, investor decks or audit reports. BharatMatrix
         reads them page by page so every future answer can point back to

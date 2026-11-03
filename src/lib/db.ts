@@ -74,6 +74,37 @@ export function ensureSchema(): Promise<void> {
         create index if not exists document_chunks_document_id_idx
         on document_chunks (document_id)
       `;
+
+      // Step 4: the Matrix grid. A question is a column; a cell is one
+      // document's answer to one question.
+      await sql`
+        create table if not exists questions (
+          id uuid primary key default gen_random_uuid(),
+          text text not null,
+          ordinal int not null,
+          created_at timestamptz not null default now()
+        )
+      `;
+
+      await sql`
+        create table if not exists matrix_cells (
+          id uuid primary key default gen_random_uuid(),
+          document_id uuid not null references documents(id) on delete cascade,
+          question_id uuid not null references questions(id) on delete cascade,
+          status text not null default 'pending',
+          answer text,
+          grounded boolean,
+          citations jsonb,
+          error text,
+          updated_at timestamptz not null default now(),
+          unique (document_id, question_id)
+        )
+      `;
+
+      await sql`
+        create index if not exists matrix_cells_question_id_idx
+        on matrix_cells (question_id)
+      `;
     })();
   }
   return schemaReady;

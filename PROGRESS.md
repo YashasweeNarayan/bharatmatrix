@@ -50,15 +50,34 @@ disk here, and will be pushed in one go once the connection is live.
       exact quotes as citations (this is the Analyst+Verifier logic, still
       combined in one call — splitting them into two separate steps is
       Step 5)
-- [ ] **Action needed:** add a `GEMINI_API_KEY` env var in Vercel (free key
-      at aistudio.google.com/apikey) — see `.env.example`. Until that's set,
-      uploads will fail at the embedding step (extraction still works, but
-      the doc will show "failed").
-- [ ] Not yet fully confirmed working end-to-end
+- [x] Confirmed working end-to-end by Muawiyah ("Good go") — grounded
+      cross-document answer with correct citations from two different
+      documents
 
 ### Step 4: Matrix grid UI
-- [ ] Spreadsheet grid: rows = documents, columns = questions
-- [ ] Click-a-cell → source/evidence side panel
+- [x] `questions` + `matrix_cells` tables (one row per document×question,
+      status pending/computing/ready/failed)
+- [x] `src/lib/matrix.ts`: `computeCell()` — per-document-scoped vector
+      search (top-6 chunks from *that document only*, unlike the Ask
+      panel's cross-document top-10) + grounded answer, bounded-concurrency
+      `computeCells()` batch runner
+- [x] API routes: `POST/GET /api/questions` (add column, computes it for
+      every ready doc), `DELETE /api/questions/[id]`, `GET /api/matrix`
+      (cheap DB-only fetch for the grid — safe to poll), `POST
+      /api/matrix/recompute` (retry one failed cell), `POST
+      /api/matrix/backfill` (fill cells for docs uploaded after questions
+      already existed)
+- [x] `MatrixTable.tsx` + `/matrix` page: add-question input, delete-column
+      button, grid with per-cell status (queued/reading/answer/failed),
+      click a filled cell to open an evidence panel below with the full
+      answer + exact quoted passages, "Fill N missing cells" button, retry
+      on failed cells. Nav links added both ways between `/workspace` and
+      `/matrix`.
+- [x] Deliberately cost-conscious: the grid only polls `GET /api/matrix`
+      (no LLM call, just a DB read) — a Gemini call only happens when
+      Muawiyah clicks Add column, Retry, or Fill missing cells, given the
+      free tier's tight daily quota
+- [ ] Not yet tested on the live site
 
 ### Step 5: Analyst + Verifier agents
 - [ ] Split "find the answer" (Analyst) from "check it against source text" (Verifier)
@@ -138,3 +157,19 @@ disk here, and will be pushed in one go once the connection is live.
   actually enough; if it also gets exhausted quickly, the real fix is
   enabling billing in Google AI Studio (cheap at this project's scale, as
   budgeted earlier).**
+- **2026-11-03** — Muawiyah confirmed "Good go" on Step 3 (screenshot showed a
+  correctly grounded answer citing two different documents). Built Step 4
+  (Matrix grid). Added `questions` and `matrix_cells` tables, a `matrix.ts`
+  helper doing per-document-scoped retrieval + grounded answers for one
+  cell (separate from the Ask panel's cross-document search — a cell only
+  ever searches its own document), and five API routes for creating
+  questions, deleting them, reading the grid, retrying a failed cell, and
+  backfilling cells for documents added after questions already existed.
+  Built the `MatrixTable` grid UI with an evidence panel below it (click a
+  filled cell to see the exact quoted passage), wired into a new `/matrix`
+  page, with nav links added both ways between Workspace and Matrix. Kept
+  the 20-requests/day quota scare from Step 3 in mind: the grid polls a
+  cheap DB-only endpoint for live status, and nothing fires a real Gemini
+  call except an explicit click (add a question, retry, or backfill).
+  Syntax-checked clean, pushed. Waiting on Muawiyah to test on the live
+  site before calling Step 4 done.
