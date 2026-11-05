@@ -24,6 +24,10 @@ export async function GET() {
            verification_note, error
     from matrix_cells
   `;
+  const contradictions = await sql`
+    select question_id, status, has_contradiction, explanation, error
+    from question_contradictions
+  `;
 
-  return NextResponse.json({ documents, questions, cells });
+  return NextResponse.json({ documents, questions, cells, contradictions });
 }

@@ -224,3 +224,86 @@ export async function answerFromContext(
 
   return JSON.parse(text) as AnswerResult;
 }
+
+export type ContradictionResult = {
+  hasContradiction: boolean;
+  explanation: string;
+};
+
+const CONTRADICTION_SCHEMA = {
+  type: "object",
+  properties: {
+    hasContradiction: {
+      type: "boolean",
+      description:
+        "true only if the answers genuinely conflict on a factual point " +
+        "(a different number, date, name, or yes/no) — NOT true just " +
+        "because they're worded differently, phrased at different levels " +
+        "of detail, or one is more specific than the other.",
+    },
+    explanation: {
+      type: "string",
+      description:
+        "If hasContradiction is true, name which documents disagree and " +
+        "what the conflicting values are, in one or two sentences. If " +
+        "false, say briefly why the answers are actually consistent.",
+    },
+  },
+  required: ["hasContradiction", "explanation"],
+};
+
+/**
+ * Compares the same question's already-grounded, already-verified answers
+ * across several documents and judges whether they genuinely conflict.
+ * Deliberately a single call per question (not one call per document
+ * pair) to keep this cheap against the free-tier quota. Unlike the
+ * Analyst/Verifier pair, this step is inherently a judgment call — two
+ * answers can be worded completely differently and still agree, or look
+ * similar and still conflict — so it stays an LLM call rather than a
+ * deterministic check.
+ */
+export async function detectContradiction(
+  question: string,
+  answers: Array<{ filename: string; answer: string }>,
+): Promise<ContradictionResult> {
+  const answersBlock = answers
+    .map((a, i) => `[${i + 1}] ${a.filename}: ${a.answer}`)
+    .join("\n");
+
+  const systemInstruction =
+    "You are the Contradiction Checker for BharatMatrix. You are given " +
+    "one question and that same question's answer from several different " +
+    "business documents (annual reports, investor decks, audit reports), " +
+    "where every answer has already been confirmed as grounded in its " +
+    "own source document. Your only job is to judge whether these " +
+    "answers actually conflict with each other on a factual point. Be " +
+    "conservative: different companies, different reporting periods, or " +
+    "just different phrasing are NOT contradictions — only flag a real " +
+    "disagreement about the same fact.";
+
+  const response = await withRetry<
+    Awaited<ReturnType<typeof client.models.generateContent>>
+  >(
+    () =>
+      client.models.generateContent({
+        model: CHAT_MODEL,
+        contents: `Question: ${question}\n\nAnswers:\n${answersBlock}`,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: CONTRADICTION_SCHEMA,
+        },
+      }),
+    "generateContent (contradiction check)",
+  );
+
+  const text = response.text;
+  if (!text) {
+    throw new Error(
+      "Model response had no text output — it may have been blocked or " +
+        "returned an unexpected shape.",
+    );
+  }
+
+  return JSON.parse(text) as ContradictionResult;
+}

@@ -101,9 +101,24 @@ disk here, and will be pushed in one go once the connection is live.
 - [ ] Not yet tested on the live site
 
 ### Step 6: Contradiction detection
-- [ ] Cross-document claim comparison
-- [ ] Side-by-side conflict UI
-- [ ] Evaluate against ContractNLI labeled data
+- [x] `question_contradictions` table (one row per question, same
+      pending/computing/ready/failed pattern as matrix_cells)
+- [x] `src/lib/contradiction.ts`: `computeContradiction()` — gathers that
+      question's grounded, Verifier-confirmed answers across every ready
+      document and asks Gemini to judge whether they genuinely conflict
+      (one call per question, not per document pair). Conservative by
+      instruction: different wording, different detail level, or
+      different reporting periods are NOT contradictions, only a real
+      factual disagreement is
+- [x] `POST /api/contradictions/queue` (fast — marks eligible questions
+      pending) + `POST /api/contradictions/step` (one question per call) —
+      same split as Step 4's fix, to avoid the same ~10s timeout trap
+- [x] UI: "Check contradictions" button, a ⚠ flag on any column header
+      with a confirmed conflict, and a Contradictions panel below Evidence
+      listing each flagged question with the explanation
+- [ ] Evaluate against ContractNLI labeled data — deferred; no dataset
+      access from the sandbox, would need Muawiyah to supply it
+- [ ] Not yet tested on the live site
 
 ### Step 7: Reports
 - [ ] Floating report panel (sticky header + download, summary → table → citations)
@@ -260,3 +275,17 @@ disk here, and will be pushed in one go once the connection is live.
   `/api/ask`. Syntax-checked clean, pushed. Waiting on Muawiyah to test —
   worth specifically trying a question the documents don't actually
   answer, to see the Verifier catch it.
+- **2026-11-03** — Muawiyah said he'd discuss the Verifier later and to
+  keep going, so moved straight to Step 6 (contradiction detection) rather
+  than waiting on "Good go" for Step 5. Built it on top of the same
+  pending→computing→ready/failed + queue/step pattern used for the Matrix
+  grid, for the same reason: one request trying to run several Gemini
+  calls before responding is what broke "Add column" earlier. A "Check
+  contradictions" button queues every question that has a grounded answer
+  from 2+ documents, then one Gemini call per question judges whether
+  those answers genuinely conflict (not just worded differently) —
+  flagged questions get a ⚠ on their column header and show up with an
+  explanation in a new Contradictions panel under Evidence. Left the
+  ContractNLI evaluation unstarted — no dataset access from the sandbox,
+  that one needs Muawiyah to supply the data. Syntax-checked clean,
+  pushed. Not yet tested.

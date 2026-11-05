@@ -111,6 +111,19 @@ export function ensureSchema(): Promise<void> {
       await sql`
         alter table matrix_cells add column if not exists verification_note text
       `;
+
+      // Step 6: contradiction detection. One row per question — compares
+      // that question's grounded answers across every ready document.
+      await sql`
+        create table if not exists question_contradictions (
+          question_id uuid primary key references questions(id) on delete cascade,
+          status text not null default 'pending',
+          has_contradiction boolean,
+          explanation text,
+          error text,
+          updated_at timestamptz not null default now()
+        )
+      `;
     })();
   }
   return schemaReady;
