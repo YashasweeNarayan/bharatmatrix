@@ -514,3 +514,14 @@ disk here, and will be pushed in one go once the connection is live.
   Vercel, redeploy, then call `/api/documents/reembed` once. To revert:
   same edit back, redeploy, reembed again. Syntax-checked clean, pushed
   — left inactive pending Muawiyah's go-ahead either way.
+- **2026-11-05 (switched ON)** — Muawiyah confirmed `OPENROUTER_API_KEY`
+  is set in Vercel, so flipped `src/lib/embeddings.ts`'s export to
+  `embed-openrouter` (Gemini's export line kept commented directly below
+  it for a fast revert later). Embedding is now live on OpenRouter +
+  `nvidia/nemotron-3.5-embed-1b:free`. Syntax-checked clean, pushed.
+  **Still needed before this does anything useful**: Muawiyah needs to
+  call `POST /api/documents/reembed` once (browser console snippet given
+  earlier) to clear the old Gemini-vector chunks and let Nemotron
+  re-index everything — without that step the documents stay marked
+  'ready' with stale, now-uncomparable Gemini vectors and nothing will
+  actually re-embed.

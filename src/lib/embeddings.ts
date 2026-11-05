@@ -23,10 +23,24 @@
 // re-indexes everything from scratch, instead of silently mixing two
 // providers' vectors in search results.
 
+// ACTIVE: OpenRouter + nvidia/nemotron-3.5-embed-1b:free — switched
+// 2026-11-05 while Gemini's free-tier daily embedding quota was
+// exhausted (see PROGRESS.md log). Needs OPENROUTER_API_KEY set in
+// Vercel, confirmed done by Muawiyah before this switch. Revert to
+// Gemini by swapping this back to the commented block below and
+// calling POST /api/documents/reembed once, same as switching to this.
 export {
   embedText,
   embedTexts,
   EMBEDDING_DIMENSIONS,
   isRateLimitError,
   isDailyQuotaError,
-} from "@/lib/gemini";
+} from "@/lib/embed-openrouter";
+
+// export {
+//   embedText,
+//   embedTexts,
+//   EMBEDDING_DIMENSIONS,
+//   isRateLimitError,
+//   isDailyQuotaError,
+// } from "@/lib/gemini";
