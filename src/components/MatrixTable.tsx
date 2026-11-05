@@ -2,68 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { AlertTriangle, Loader2, Plus, RotateCcw, X } from "lucide-react";
-
-type CellStatus = "pending" | "computing" | "ready" | "failed";
-
-type Citation = {
-  documentId: string;
-  pageLabel: string;
-  quote: string;
-};
-
-type Cell = {
-  document_id: string;
-  question_id: string;
-  status: CellStatus;
-  answer: string | null;
-  grounded: boolean | null;
-  citations: Citation[] | null;
-  verification_note: string | null;
-  error: string | null;
-};
-
-type DocumentRow = { id: string; filename: string };
-type Question = { id: string; text: string };
-
-type ContradictionStatus = "pending" | "computing" | "ready" | "failed";
-
-type Contradiction = {
-  question_id: string;
-  status: ContradictionStatus;
-  has_contradiction: boolean | null;
-  explanation: string | null;
-  error: string | null;
-};
-
-type MatrixData = {
-  documents: DocumentRow[];
-  questions: Question[];
-  cells: Cell[];
-  contradictions: Contradiction[];
-};
-
-function cellKey(documentId: string, questionId: string) {
-  return `${documentId}::${questionId}`;
-}
-
-// citations comes from a Postgres jsonb column. It should already arrive as
-// a parsed array, but this guards against it ever being a JSON string, a
-// single object, or anything else malformed — rendering with `.map` on
-// something that isn't an array is what crashed the whole page on click.
-function citationsOf(cell: Cell | null): Citation[] {
-  const raw = cell?.citations;
-  if (Array.isArray(raw)) return raw;
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
+import { AlertTriangle, FileText, Loader2, Plus, RotateCcw, X } from "lucide-react";
+import ReportPanel from "@/components/ReportPanel";
+import { Cell, Contradiction, MatrixData, cellKey, citationsOf } from "@/lib/types";
 
 export default function MatrixTable() {
   const [data, setData] = useState<MatrixData | null>(null);
@@ -74,6 +15,7 @@ export default function MatrixTable() {
   const [selected, setSelected] = useState<Cell | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [checkingContradictions, setCheckingContradictions] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const draining = useRef(false);
   const contradictionsDraining = useRef(false);
 
@@ -376,6 +318,15 @@ export default function MatrixTable() {
             Check contradictions
           </button>
         )}
+        {data.questions.length > 0 && (
+          <button
+            onClick={() => setReportOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-ink-700 px-3.5 py-2.5 text-[13px] text-neutral-300 hover:bg-ink-800"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Report
+          </button>
+        )}
       </div>
 
       {data.questions.length === 0 ? (
@@ -538,6 +489,10 @@ export default function MatrixTable() {
             );
           })()}
         </div>
+      )}
+
+      {reportOpen && (
+        <ReportPanel data={data} onClose={() => setReportOpen(false)} />
       )}
     </div>
   );

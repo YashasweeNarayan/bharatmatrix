@@ -121,8 +121,9 @@ disk here, and will be pushed in one go once the connection is live.
 - [ ] Not yet tested on the live site
 
 ### Step 7: Reports
-- [ ] Floating report panel (sticky header + download, summary → table → citations)
-- [ ] PDF export
+- [x] Floating report panel (sticky header + download, summary → table → citations)
+- [x] PDF export
+- [ ] Not yet tested on the live site
 
 ### Step 8: Polish + evaluation
 - [ ] Loading states, animations, Agent Monitor feed
@@ -461,3 +462,28 @@ disk here, and will be pushed in one go once the connection is live.
   bucket) — not cleverer batching of one key, which doesn't reduce how
   many chunks need embedding. Left that decision to Muawiyah rather than
   building it speculatively. Syntax-checked clean, pushed.
+- **2026-11-05 (Step 7: Reports)** — With the embedding issue diagnosed
+  and the daily quota dead for the day anyway, Muawiyah asked to move on
+  to other work; confirmed it meant the next roadmap item. Built the
+  report panel: a `src/lib/types.ts` now holds the Cell/Question/
+  Contradiction/MatrixData types shared between `MatrixTable.tsx` and the
+  new `ReportPanel.tsx` (pulled out of MatrixTable so the two don't drift
+  out of sync). The panel opens from a new "Report" button next to "Check
+  contradictions" and shows: a deterministic summary (document/question
+  counts, grounded-answer ratio, conflicts flagged — computed from data
+  the grid already has, zero new Gemini calls, deliberately, given how
+  tight the free tier's daily quota turned out to be today), the full
+  answer set per question across every document (not the grid's truncated
+  preview), and a citations appendix grouped by document with page labels
+  and exact quotes. "PDF export" uses the browser's own print-to-PDF
+  (`window.print()`) rather than adding a client-side PDF library —
+  nothing to install sight-unseen from this sandbox (no way to test an
+  `npm install` here before Vercel's own build does it), and print-to-PDF
+  is a feature every real browser already has reliably. New `@media
+  print` rules in `globals.css` scope the printed output to just the
+  report panel and force it to a light/black palette instead of the
+  app's dark theme bleeding into the PDF. Syntax-checked clean (caught
+  and fixed one real bug along the way — a missing `Contradiction` import
+  in `MatrixTable.tsx` after the types refactor — plus made a couple of
+  `Map` constructions explicitly typed rather than relying on inference),
+  pushed. Not yet tested on the live site.

@@ -41,3 +41,52 @@ body {
   );
   background-size: 22px 22px;
 }
+
+/*
+ * Step 7: "PDF export" for the report panel is done with the browser's own
+ * print-to-PDF (window.print() in ReportPanel.tsx), scoped to just the
+ * report so the rest of the dark-themed app doesn't bleed into the page.
+ * App itself uses a near-black theme (body background #0a0b0f, see above)
+ * which would make for an unreadable, ink-wasting PDF, so everything
+ * tagged .report-print-* is forced to a plain light/black print palette
+ * only inside @media print — the on-screen panel stays the normal dark
+ * theme the rest of the app uses.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #report-print-area,
+  #report-print-area * {
+    visibility: visible;
+  }
+  #report-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    max-width: none;
+    background: #ffffff !important;
+    color: #111111;
+  }
+  .report-hide-print {
+    display: none !important;
+  }
+  .report-print-only {
+    display: block !important;
+  }
+  .report-print-heading {
+    color: #666666 !important;
+  }
+  .report-print-text-black {
+    color: #111111 !important;
+  }
+  .report-print-block {
+    border-color: #d4d4d4 !important;
+    break-inside: avoid;
+  }
+  .report-print-divide > * + * {
+    border-color: #e5e5e5 !important;
+  }
+}
