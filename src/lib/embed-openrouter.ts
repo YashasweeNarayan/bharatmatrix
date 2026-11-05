@@ -133,6 +133,6 @@ export function isRateLimitError(err: unknown): boolean {
  * "stuck behind rate limit" retry/give-up behavior already in
  * Workspace.tsx, without the daily-specific messaging.
  */
-export function isDailyQuotaError(): boolean {
+export function isDailyQuotaError(_err: unknown): boolean {
   return false;
 }

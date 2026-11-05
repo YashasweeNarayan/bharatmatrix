@@ -525,3 +525,23 @@ disk here, and will be pushed in one go once the connection is live.
   re-index everything — without that step the documents stay marked
   'ready' with stale, now-uncomparable Gemini vectors and nothing will
   actually re-embed.
+- **2026-11-05 (real build failure, caught by Vercel, not by my sandbox
+  check)** — The "switched ON" deploy above actually failed to build.
+  Vercel's `npm run build` (with real `node_modules`, so it fully
+  type-checks across files) errored: `embed-step/route.ts:80` calls
+  `isDailyQuotaError(err)` — one argument — but
+  `embed-openrouter.ts`'s version of that function took zero. `gemini.ts`
+  took one (`err: unknown`). The two providers' interfaces were never
+  checked against each other for parity before the switch-point design
+  went live, and my `tsc --noResolve` sandbox check can't catch a
+  cross-file interface mismatch like this — it can't fully resolve
+  imports the way Next.js's real build does, which is exactly why this
+  slipped through twice (once in the design, once in my own check)
+  before Vercel's actual build caught it. Fixed: changed
+  `embed-openrouter.ts`'s `isDailyQuotaError()` to
+  `isDailyQuotaError(_err: unknown)`, matching `gemini.ts`'s signature
+  exactly. Also re-verified every other export the two providers share
+  (`embedText`, `embedTexts`, `EMBEDDING_DIMENSIONS`, `isRateLimitError`)
+  — all match. Syntax-checked clean, pushed. This is the first time the
+  OpenRouter switch has actually deployed successfully — Muawiyah should
+  now run the `/api/documents/reembed` POST once the new deploy finishes.
