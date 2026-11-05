@@ -11,13 +11,24 @@ if (!apiKey) {
 
 const client = new GoogleGenAI({ apiKey });
 
+/** Pulls Gemini's own suggested wait out of a 429 error's retryDelay field. */
+function extractRetryDelayMs(message: string): number | null {
+  const match = message.match(/"retryDelay":"(\d+(?:\.\d+)?)s"/);
+  if (!match) return null;
+  return Math.ceil(parseFloat(match[1]) * 1000);
+}
+
 /**
- * Gemini's free tier returns 503 "high demand" fairly often. Retries with
- * exponential backoff + jitter before giving up, so a transient spike
- * doesn't surface as a user-facing error.
+ * Gemini's free tier returns 503 "high demand" fairly often, and a burst of
+ * calls (e.g. uploading several large PDFs at once, each needing a
+ * hundred-plus embedding calls) can trip its per-minute 429 rate limit too.
+ * Retries both: 503s with exponential backoff + jitter, 429s by waiting
+ * Gemini's own suggested retryDelay (it tells you exactly how long, often
+ * 30-60s) — so a transient spike or a burst doesn't surface as a
+ * user-facing error.
  */
 async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
-  const maxAttempts = 4;
+  const maxAttempts = 5;
   let lastErr: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -30,15 +41,21 @@ async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
         message.includes("503") ||
         message.includes("UNAVAILABLE") ||
         message.includes("high demand");
+      const isRateLimited =
+        message.includes("429") ||
+        message.includes("RESOURCE_EXHAUSTED") ||
+        message.includes("Quota exceeded");
 
-      if (!isOverloaded || attempt === maxAttempts) {
+      if ((!isOverloaded && !isRateLimited) || attempt === maxAttempts) {
         throw err;
       }
 
-      const delayMs = 1000 * 2 ** (attempt - 1) + Math.random() * 300;
+      const suggestedDelay = isRateLimited ? extractRetryDelayMs(message) : null;
+      const delayMs =
+        suggestedDelay ?? 1000 * 2 ** (attempt - 1) + Math.random() * 300;
       console.warn(
-        `[gemini] ${label} overloaded (attempt ${attempt}/${maxAttempts}), ` +
-          `retrying in ${Math.round(delayMs)}ms`,
+        `[gemini] ${label} ${isRateLimited ? "rate-limited" : "overloaded"} ` +
+          `(attempt ${attempt}/${maxAttempts}), retrying in ${Math.round(delayMs)}ms`,
       );
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
@@ -57,11 +74,14 @@ export const CHAT_MODEL = "gemini-3.5-flash-lite";
 /**
  * Embeds each text with its own request, at limited concurrency (the SDK's
  * batch endpoint shape wasn't confirmed, so this trades a little speed for
- * certainty — fine at this project's scale).
+ * certainty — fine at this project's scale). Kept modest (not higher) so a
+ * single large document's chunks don't alone burst past the free tier's
+ * 100-requests/minute embedding cap — withRetry above is the real backstop,
+ * this just makes tripping it less likely in the first place.
  */
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   const results: number[][] = new Array(texts.length);
-  const concurrency = 5;
+  const concurrency = 3;
   let cursor = 0;
 
   async function worker() {

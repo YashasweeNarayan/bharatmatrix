@@ -6,7 +6,7 @@ import Link from "next/link";
 import { FileText, Loader2, Upload, X } from "lucide-react";
 import AskPanel from "@/components/AskPanel";
 
-type DocumentStatus = "processing" | "ready" | "failed";
+type DocumentStatus = "processing" | "embedding" | "ready" | "failed";
 
 type DocumentRow = {
   id: string;
@@ -38,6 +38,8 @@ export default function Workspace() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const embedDraining = useRef(false);
+  const [embedError, setEmbedError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/documents", { cache: "no-store" });
@@ -46,11 +48,43 @@ export default function Workspace() {
     setDocs(data.documents ?? []);
   }, []);
 
+  // Embeds one batch of one document's chunks per call, refreshing after
+  // each — same one-step-at-a-time pattern used for the Matrix grid, for
+  // the same reason: trying to embed a whole large document in one request
+  // risked both the platform's time limit and Gemini's per-minute rate
+  // limit on a burst of calls.
+  const drainEmbeddings = useCallback(async () => {
+    if (embedDraining.current) return;
+    embedDraining.current = true;
+    try {
+      for (let i = 0; i < 500; i++) {
+        const res = await fetch("/api/documents/embed-step", { method: "POST" });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          setEmbedError(
+            body?.detail || body?.error || `Indexing failed (${res.status}).`,
+          );
+          await refresh();
+          break;
+        }
+        const json = await res.json();
+        await refresh();
+        if (json.done) break;
+      }
+    } catch {
+      setEmbedError("Lost connection while indexing a document — try again.");
+    } finally {
+      embedDraining.current = false;
+    }
+  }, [refresh]);
+
   useEffect(() => {
     refresh().finally(() => setLoading(false));
   }, [refresh]);
 
-  // Poll while anything is still processing.
+  // Cheap DB-only poll while a document is still being extracted — this
+  // normally finishes within the upload request itself, but polling here
+  // costs nothing and covers it either way.
   useEffect(() => {
     const hasProcessing = docs.some((d) => d.status === "processing");
     if (hasProcessing && !pollRef.current) {
@@ -68,10 +102,18 @@ export default function Workspace() {
     };
   }, [docs, refresh]);
 
+  // Auto-resume indexing any document still mid-embedding (e.g. from
+  // before a page reload) — finishing already-requested work, not a new
+  // unprompted Gemini call.
+  useEffect(() => {
+    if (docs.some((d) => d.status === "embedding")) drainEmbeddings();
+  }, [docs, drainEmbeddings]);
+
   const uploadFiles = useCallback(
     async (files: FileList | File[]) => {
       const list = Array.from(files);
       setUploading((prev) => [...prev, ...list.map((f) => f.name)]);
+      setEmbedError(null);
 
       await Promise.all(
         list.map(async (file) => {
@@ -84,9 +126,10 @@ export default function Workspace() {
           }
         }),
       );
-      refresh();
+      await refresh();
+      drainEmbeddings();
     },
-    [refresh],
+    [refresh, drainEmbeddings],
   );
 
   const toggleExpand = useCallback(
@@ -133,6 +176,19 @@ export default function Workspace() {
         reads them page by page so every future answer can point back to
         exactly where it came from.
       </p>
+
+      {embedError && (
+        <div className="mt-4 flex items-start justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-300">
+          <span>{embedError}</span>
+          <button
+            onClick={() => setEmbedError(null)}
+            aria-label="Dismiss error"
+            className="flex-shrink-0 text-red-400 hover:text-red-200"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       <div
         onDragOver={(e) => {
@@ -237,7 +293,8 @@ export default function Workspace() {
                 </p>
               )}
 
-              {expanded === doc.id && doc.status === "ready" && (
+              {expanded === doc.id &&
+                (doc.status === "ready" || doc.status === "embedding") && (
                 <div className="border-t border-ink-700 px-4 py-3">
                   {!pagesById[doc.id] ? (
                     <p className="text-[12px] text-neutral-500">Loading…</p>
@@ -286,6 +343,14 @@ function StatusBadge({ status }: { status: DocumentStatus }) {
       <span className="flex items-center gap-1.5 rounded-full bg-saffron-500/10 px-2 py-0.5 text-[11px] text-saffron-400">
         <span className="h-1.5 w-1.5 animate-pulse-slow rounded-full bg-saffron-500" />
         reading
+      </span>
+    );
+  }
+  if (status === "embedding") {
+    return (
+      <span className="flex items-center gap-1.5 rounded-full bg-saffron-500/10 px-2 py-0.5 text-[11px] text-saffron-400">
+        <span className="h-1.5 w-1.5 animate-pulse-slow rounded-full bg-saffron-500" />
+        indexing
       </span>
     );
   }

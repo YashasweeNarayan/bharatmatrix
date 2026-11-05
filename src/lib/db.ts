@@ -75,6 +75,19 @@ export function ensureSchema(): Promise<void> {
         on document_chunks (document_id)
       `;
 
+      // Chunks are now inserted text-first with no embedding yet, and
+      // embedded afterwards in small batches (see /api/documents/embed-step)
+      // instead of inside the upload request — a single request trying to
+      // embed every chunk of a 100+ page 10-K at once is what both timed
+      // out and tripped Gemini's per-minute rate limit.
+      await sql`
+        alter table document_chunks alter column embedding drop not null
+      `;
+      await sql`
+        create index if not exists document_chunks_unembedded_idx
+        on document_chunks (document_id) where embedding is null
+      `;
+
       // Step 4: the Matrix grid. A question is a column; a cell is one
       // document's answer to one question.
       await sql`

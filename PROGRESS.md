@@ -289,3 +289,31 @@ disk here, and will be pushed in one go once the connection is live.
   ContractNLI evaluation unstarted — no dataset access from the sandbox,
   that one needs Muawiyah to supply the data. Syntax-checked clean,
   pushed. Not yet tested.
+- **2026-11-05** — Muawiyah started testing with real, large documents for
+  the first time (4 years of 3M's actual 10-Ks, 100+ pages each) and hit a
+  real bug: `429 RESOURCE_EXHAUSTED` from Gemini's embedding endpoint —
+  "Embed content requests per minute limit exceeded... limit: 100." Asked
+  whether to switch to NVIDIA Nemotron or Grok instead; checked both and
+  said no — Grok has no confirmed free tier or embeddings endpoint at all,
+  and NVIDIA NIM's free tier is a worse 30 req/min with no SLA, so
+  switching providers wouldn't actually fix anything.
+  The real bug: document upload (`POST /api/documents`) ran extract +
+  chunk + embed *every* chunk inside one request — this had never
+  actually been stress-tested with a large document before (every prior
+  test PDF was 1 page). A 100+ page 10-K produces 150+ chunks, and
+  embedding them all in one burst both risked the platform's request time
+  limit and tripped Gemini's 100/minute embedding cap on its own.
+  Fixed two ways:
+  1. `withRetry` (gemini.ts) now also retries on 429/RESOURCE_EXHAUSTED,
+     parsing Gemini's own suggested `retryDelay` out of the error instead
+     of guessing — it was already telling us "retry in 51s."
+  2. Restructured upload so it never embeds inside the upload request at
+     all: `document_chunks.embedding` is now nullable, upload inserts
+     chunk text only and sets `documents.status = 'embedding'`, and a new
+     `POST /api/documents/embed-step` embeds one batch (20 chunks) of one
+     document per call — same fast-insert-then-drain pattern as Matrix
+     cells and contradiction checks. Workspace.tsx drains it automatically
+     after upload and shows an "indexing" badge while it runs. A document
+     only reaches `'ready'` (searchable) once every chunk is embedded.
+  Syntax-checked clean, pushed. Should hold up against the AMD/3M/Boeing
+  FinanceBench-style large-10-K testing going forward.

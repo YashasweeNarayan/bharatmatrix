@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
            dc.embedding <=> ${vectorLiteral}::vector as distance
     from document_chunks dc
     join documents d on d.id = dc.document_id
-    where d.status = 'ready'
+    where d.status = 'ready' and dc.embedding is not null
     order by distance asc
     limit 10
   `;

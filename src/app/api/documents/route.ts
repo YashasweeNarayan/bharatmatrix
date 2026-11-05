@@ -4,10 +4,9 @@ import { randomUUID } from "crypto";
 import { sql, ensureSchema } from "@/lib/db";
 import { extractDocument } from "@/lib/extract";
 import { chunkPages } from "@/lib/chunk";
-import { embedTexts } from "@/lib/gemini";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 30;
 // See the comment in /api/matrix/route.ts — same static-caching gotcha.
 export const dynamic = "force-dynamic";
 
@@ -83,25 +82,28 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // Chunk + embed for search (Step 3). Kept out of the page-insert
-    // transaction above since it's a separate concern and the slower part —
-    // if this fails, the extracted pages are still saved and visible.
+    // Chunk now, but deliberately do NOT embed here (Step 3 used to). A
+    // single request trying to embed every chunk of a 100+ page document
+    // at once both risked the platform's request-duration limit and could
+    // burst past Gemini's per-minute embedding rate limit on its own.
+    // Chunks are inserted with no vector yet, status goes to 'embedding',
+    // and /api/documents/embed-step embeds a small batch at a time,
+    // driven by the client the same way Matrix cells are.
     const chunks = chunkPages(
       pages.map((p) => ({ label: p.label, content: p.content })),
     );
-    const vectors = await embedTexts(chunks.map((c) => c.content));
 
     await sql.begin(async (tx) => {
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        const vectorLiteral = JSON.stringify(vectors[i]);
+      for (const chunk of chunks) {
         await tx`
-          insert into document_chunks (document_id, ordinal, page_label, content, embedding)
-          values (${doc.id}, ${chunk.ordinal}, ${chunk.pageLabel}, ${chunk.content}, ${vectorLiteral}::vector)
+          insert into document_chunks (document_id, ordinal, page_label, content)
+          values (${doc.id}, ${chunk.ordinal}, ${chunk.pageLabel}, ${chunk.content})
         `;
       }
       await tx`
-        update documents set status = 'ready', page_count = ${pages.length}
+        update documents
+        set status = ${chunks.length > 0 ? "embedding" : "ready"},
+            page_count = ${pages.length}
         where id = ${doc.id}
       `;
     });

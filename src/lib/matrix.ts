@@ -36,7 +36,7 @@ export async function computeCell(
       select page_label, content,
              embedding <=> ${vectorLiteral}::vector as distance
       from document_chunks
-      where document_id = ${documentId}
+      where document_id = ${documentId} and embedding is not null
       order by distance asc
       limit 6
     `;
