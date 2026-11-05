@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
-import { embedText, answerFromContext } from "@/lib/gemini";
+import { embedText } from "@/lib/embeddings";
+import { answerFromContext } from "@/lib/gemini";
 import { verifyGrounding } from "@/lib/verify";
 
 /**

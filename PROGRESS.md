@@ -487,3 +487,30 @@ disk here, and will be pushed in one go once the connection is live.
   in `MatrixTable.tsx` after the types refactor — plus made a couple of
   `Map` constructions explicitly typed rather than relying on inference),
   pushed. Not yet tested on the live site.
+- **2026-11-05 (temporary OpenRouter/Nemotron swap — on standby, NOT
+  active)** — Built, but did not activate, a second embedding provider so
+  Muawiyah can test today without waiting for tomorrow's Gemini reset,
+  switchable with one edit: `src/lib/embeddings.ts` is now the single
+  place every embedding call site (`embed-step`, `/api/ask`,
+  `matrix.ts`, `db.ts`) imports from, instead of importing `embedText`/
+  `embedTexts`/`EMBEDDING_DIMENSIONS` straight from `@/lib/gemini` —
+  currently it re-exports Gemini's versions unchanged, so nothing
+  behaves differently yet. `src/lib/embed-openrouter.ts` is the
+  alternate implementation: calls OpenRouter's documented
+  OpenAI-compatible `POST /api/v1/embeddings` with
+  `nvidia/nemotron-3.5-embed-1b:free`, batches many texts per request
+  (OpenRouter's docs confirm real array-input batching — unlike the
+  Gemini SDK, which silently didn't), and truncates Nemotron's native
+  2048-dim output down to 768 to match the existing pgvector column
+  with zero schema change (Nemotron's embeddings are Matryoshka-style,
+  so truncation is a documented, valid way to shrink them). Also added
+  `POST /api/documents/reembed` — nulls every chunk's stored embedding
+  and resets every document back to `'embedding'` status, needed after
+  ANY provider switch (in either direction) since two providers'
+  vectors aren't comparable even at the same dimension; not called by
+  anything automatically, a deliberate manual step tied to the swap.
+  To actually switch: edit the export line in `embeddings.ts` to point
+  at `embed-openrouter` instead of `gemini`, set `OPENROUTER_API_KEY` in
+  Vercel, redeploy, then call `/api/documents/reembed` once. To revert:
+  same edit back, redeploy, reembed again. Syntax-checked clean, pushed
+  — left inactive pending Muawiyah's go-ahead either way.

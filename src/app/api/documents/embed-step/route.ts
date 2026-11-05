@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
-import { embedTexts, isRateLimitError, isDailyQuotaError } from "@/lib/gemini";
+import {
+  embedTexts,
+  isRateLimitError,
+  isDailyQuotaError,
+} from "@/lib/embeddings";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
