@@ -545,3 +545,25 @@ disk here, and will be pushed in one go once the connection is live.
   — all match. Syntax-checked clean, pushed. This is the first time the
   OpenRouter switch has actually deployed successfully — Muawiyah should
   now run the `/api/documents/reembed` POST once the new deploy finishes.
+- **2026-11-05 (free Nemotron backend is flaky — added retry + treat as
+  transient, not a hard failure)** — After the build fix deployed and
+  reembed ran, got a real failure: `502: HTTP 500:
+  {"message":"service inference failed"}` — OpenRouter's gateway
+  reporting its own upstream (the free, no-SLA Nemotron instance)
+  errored on inference. This isn't a code bug, it's the free tier doing
+  exactly what its own terms warn about ("not for production", no SLA).
+  Since `embed-openrouter.ts` had no retry at all for this, it threw
+  immediately and `embed-step` — not recognizing it as rate-limiting —
+  marked the document `'failed'`. Fixed two ways: (1) `callOpenRouter`
+  now retries up to twice (400ms, 1000ms) on a 500/502/503/504 before
+  giving up, since a single transient inference blip is the common case
+  and this is cheap and safe within Vercel's duration cap (embed-step
+  only makes one call per invocation); (2) if it still fails after
+  retries, `isRateLimitError` for this provider now also recognizes
+  these transient 5xx shapes (not just 429s) and treats them the same
+  way — document stays `'embedding'`, not `'failed'`, and the client's
+  existing backoff loop in `Workspace.tsx` just retries later instead of
+  needing a manual recovery. Syntax-checked clean, pushed. Worth
+  watching: if this keeps happening often, the free Nemotron tier's
+  reliability (not just its rate limit) may be the real ceiling on using
+  it for anything beyond a stopgap.
