@@ -373,3 +373,30 @@ disk here, and will be pushed in one go once the connection is live.
   Syntax-checked clean, pushed. Muawiyah should retry the 3M documents
   once more; if any still 504, the next lead is whether `ensureSchema()`
   or the per-chunk `sql` writes are themselves slow, not Gemini.
+- **2026-11-05 (third follow-up, same day — the actual fix)** — Every
+  round so far had been tuning *how* to survive hitting the rate limit
+  (retry timing, failure handling, backoff pacing). Muawiyah pushed back
+  and asked for the real optimization instead: is there a way to avoid
+  tripping the limit in the first place, mathematically, rather than just
+  handling it better. He was right — and the answer was sitting in the
+  architecture the whole time. The free tier's quota
+  (`embed_content_free_tier_requests`, 100/minute) is metered per API
+  *request*, not per text embedded. `embedTexts` had been calling
+  `embedContent` once per chunk the entire project — so a single 150-chunk
+  10-K alone needed ~150 requests, blowing the *entire* per-minute budget
+  on its own before any other document got a turn. That's the actual root
+  cause behind every 429 and the 504 that followed from trying to out-wait
+  it. The real fix: Gemini's `embedContent` accepts an array of texts as
+  `contents` and returns one embedding per text in a single response —
+  confirmed via Gemini API docs and SDK reference. Rewrote `embedTexts` to
+  pack chunks into batches (up to 50 texts or 60k characters, whichever
+  comes first) and send each batch as ONE request instead of one request
+  per chunk. For a 150-chunk document this drops request count from ~150
+  to ~3 — comfortably inside the per-minute budget even across all 4 3M
+  filings at once. Raised `embed-step`'s `BATCH_SIZE` back up to 50 to
+  match (now usually a single Gemini request per step call, not several
+  sequential ones, so no new duration-cap risk). The earlier fail-fast/
+  no-retry-in-place 429 handling, the non-terminal `failed` fix, and the
+  drain-loop pacing all stay as the backstop for whatever residual rate
+  limiting still happens — but they should now rarely if ever fire.
+  Syntax-checked clean, pushed. This is the one that should actually hold.

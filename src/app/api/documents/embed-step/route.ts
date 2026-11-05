@@ -6,16 +6,15 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 
-// Small enough that a batch has a good chance of finishing well within the
-// request's time budget; large enough that a 100+ page document doesn't
-// need an unreasonable number of round trips to finish. Lowered twice now:
-// 20 -> 10 after a real 150+ page document tripped Gemini's per-minute
-// rate limit, then 10 -> 6 after the in-place 429 retry (meant to ride out
-// that limit) itself blew the platform's hard request-duration cap and
-// came back as a raw 504 — rate limits are no longer retried in place at
-// all (see withRetry in gemini.ts), so this just needs to stay comfortably
-// inside the time budget for ordinary embedding latency.
-const BATCH_SIZE = 6;
+// Raised back up now that embedTexts batches many chunks into a single
+// Gemini request instead of one request per chunk (see gemini.ts) — the
+// real fix for the rate limit, since the free-tier quota is metered per
+// *request*, not per text. A batch of this size now costs Gemini a single
+// request (its own internal batching caps at 50), so the limiting factor
+// here is just staying inside the platform's request-duration budget for
+// one embedContent call plus this many individual chunk writes, not
+// request-count pressure against the per-minute cap.
+const BATCH_SIZE = 50;
 
 /**
  * Embeds one batch of chunks for one document per call. Documents go

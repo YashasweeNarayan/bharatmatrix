@@ -75,44 +75,76 @@ export const EMBEDDING_DIMENSIONS = 768;
 // Lite models generally get a more generous free-tier daily quota.
 export const CHAT_MODEL = "gemini-3.5-flash-lite";
 
+// The free-tier quota (`embed_content_free_tier_requests`, 100/minute) is
+// metered per API *request*, not per text embedded. This was the actual
+// cause of every 429 so far: embedding one chunk per request meant a
+// single 150-chunk 10-K alone needed ~150 requests — more than the whole
+// per-minute budget before any other document even got a turn. Gemini's
+// embedContent accepts an array of texts as `contents` and returns one
+// embedding per text in a single response — so one request can cover many
+// chunks at once. Capped conservatively (not at whatever the API's real
+// ceiling is) to stay well inside undocumented per-request token/size
+// limits, not to protect the per-minute request quota, which this exists
+// specifically to stop pressuring.
+const EMBED_BATCH_SIZE = 50;
+const EMBED_BATCH_MAX_CHARS = 60_000;
+
 /**
- * Embeds each text with its own request, at limited concurrency (the SDK's
- * batch endpoint shape wasn't confirmed, so this trades a little speed for
- * certainty — fine at this project's scale). Kept modest (not higher) so a
- * single large document's chunks don't alone burst past the free tier's
- * 100-requests/minute embedding cap — withRetry above is the real backstop,
- * this just makes tripping it less likely in the first place.
+ * Embeds many texts using as few Gemini requests as possible: packs texts
+ * into batches (bounded by both count and total characters) and sends each
+ * batch as a single embedContent call with `contents` as an array, rather
+ * than one call per text. This is a request-count optimization, not a
+ * concurrency one — batches are sent one after another, not in parallel,
+ * since parallel batches would just reintroduce the per-minute burst risk
+ * this exists to avoid.
  */
 export async function embedTexts(texts: string[]): Promise<number[][]> {
-  const results: number[][] = new Array(texts.length);
-  const concurrency = 3;
-  let cursor = 0;
+  if (texts.length === 0) return [];
 
-  async function worker() {
-    while (cursor < texts.length) {
-      const i = cursor++;
-      const response = await withRetry<
-        Awaited<ReturnType<typeof client.models.embedContent>>
-      >(
-        () =>
-          client.models.embedContent({
-            model: EMBEDDING_MODEL,
-            contents: texts[i],
-            config: { outputDimensionality: EMBEDDING_DIMENSIONS },
-          }),
-        "embedContent",
+  const batches: string[][] = [];
+  let current: string[] = [];
+  let currentChars = 0;
+  for (const text of texts) {
+    const wouldOverflow =
+      current.length >= EMBED_BATCH_SIZE ||
+      (current.length > 0 && currentChars + text.length > EMBED_BATCH_MAX_CHARS);
+    if (wouldOverflow) {
+      batches.push(current);
+      current = [];
+      currentChars = 0;
+    }
+    current.push(text);
+    currentChars += text.length;
+  }
+  if (current.length > 0) batches.push(current);
+
+  const results: number[][] = [];
+  for (const batch of batches) {
+    const response = await withRetry<
+      Awaited<ReturnType<typeof client.models.embedContent>>
+    >(
+      () =>
+        client.models.embedContent({
+          model: EMBEDDING_MODEL,
+          contents: batch,
+          config: { outputDimensionality: EMBEDDING_DIMENSIONS },
+        }),
+      "embedContent (batch)",
+    );
+    const embeddings = response.embeddings;
+    if (!embeddings || embeddings.length !== batch.length) {
+      throw new Error(
+        `Batch embedding returned ${embeddings?.length ?? 0} vectors for ` +
+          `${batch.length} texts — response shape didn't match the request.`,
       );
-      const values = response.embeddings?.[0]?.values;
-      if (!values) {
-        throw new Error(`Embedding request returned no vector for chunk ${i}.`);
+    }
+    for (const embedding of embeddings) {
+      if (!embedding.values) {
+        throw new Error("Embedding request returned no vector for a chunk.");
       }
-      results[i] = values;
+      results.push(embedding.values);
     }
   }
-
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, texts.length) }, worker),
-  );
   return results;
 }
 
