@@ -4,7 +4,7 @@ import {
   embedTexts,
   isRateLimitError,
   isDailyQuotaError,
-} from "@/lib/embeddings";
+} from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;

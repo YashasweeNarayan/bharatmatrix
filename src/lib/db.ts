@@ -1,5 +1,5 @@
 import postgres from "postgres";
-import { EMBEDDING_DIMENSIONS } from "@/lib/embeddings";
+import { EMBEDDING_DIMENSIONS } from "@/lib/gemini";
 
 const connectionString =
   process.env.DATABASE_URL ||

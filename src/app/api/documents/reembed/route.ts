@@ -7,16 +7,16 @@ export const dynamic = "force-dynamic";
 /**
  * Resets every document chunk's stored embedding to null and every
  * document (other than one still mid-extraction) back to 'embedding'
- * status, so the currently active provider (src/lib/embeddings.ts) picks
- * them all up and re-indexes from scratch.
+ * status, so Gemini re-indexes everything from scratch on the next
+ * drain.
  *
- * Call this ONCE, manually, right after switching the provider in
- * src/lib/embeddings.ts — in either direction. Switching providers makes
- * every already-stored vector invalid (different vector space, even when
- * both are sized to the same 768 dimensions), so searches would silently
- * mix two providers' vectors without this reset. Not called
- * automatically by anything — this is a deliberate, manually-triggered
- * action tied to a provider swap, not routine maintenance.
+ * Needed right now (2026-11-06): some documents were briefly re-embedded
+ * with OpenRouter/Nemotron vectors while that was active (see
+ * PROGRESS.md) before the switch was reverted. Those vectors aren't
+ * comparable to Gemini's — different vector space even at the same 768
+ * dimensions — so this must be called once to clear them and let Gemini
+ * re-index cleanly. Not called automatically by anything; a deliberate,
+ * manually-triggered reset, not routine maintenance.
  *
  * Easiest way to call it: open the deployed site, open the browser
  * console, and run:

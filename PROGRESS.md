@@ -567,3 +567,26 @@ disk here, and will be pushed in one go once the connection is live.
   watching: if this keeps happening often, the free Nemotron tier's
   reliability (not just its rate limit) may be the real ceiling on using
   it for anything beyond a stopgap.
+- **2026-11-06 (OpenRouter removed — Gemini only, for good)** — Muawiyah
+  decided to stop here rather than keep fighting the free Nemotron
+  backend's flakiness: sticking to Gemini only. Deleted
+  `src/lib/embed-openrouter.ts` and the `src/lib/embeddings.ts`
+  switch-point entirely (that abstraction existed only to make swapping
+  providers a one-line edit, and is exactly what caused both build
+  failures this week via interface drift between the two providers —
+  with only one provider left, it's pure risk with no upside now).
+  Every call site (`embed-step/route.ts`, `/api/ask`, `matrix.ts`,
+  `db.ts`) now imports `embedText`/`embedTexts`/`EMBEDDING_DIMENSIONS`/
+  `isRateLimitError`/`isDailyQuotaError` straight from `@/lib/gemini`
+  again, same as before this whole provider-swap detour started.
+  `OPENROUTER_API_KEY` in Vercel is now unused and can be removed (not
+  required, just dead weight). Syntax-checked clean, pushed. Calling
+  `/api/documents/reembed` once more clears out the Nemotron vectors
+  that got written while the switch was briefly live, so Gemini
+  re-indexes everything cleanly instead of mixing vector spaces.
+  **Net effect of this whole detour**: no functional change from where
+  things stood before the swap — Gemini embedding, same daily-quota
+  ceiling as always (1000/day free tier, resets ~24h after being hit) —
+  but the daily-vs-per-minute quota distinction, the 504 duration-cap
+  fix, and Step 7 (Reports) all remain in place and were genuine
+  progress.
