@@ -349,3 +349,27 @@ disk here, and will be pushed in one go once the connection is live.
   retry (↺) on the failed `3M_2015_10K.pdf` and let the other three
   finish draining — this time a rate limit should show up as patient
   retrying, not a permanent failure.
+- **2026-11-05 (second follow-up, same day)** — That fix *also* had a bug,
+  self-inflicted by the fix itself this time: Muawiyah's next screenshot
+  showed all 4 documents still stuck "indexing" with a banner reading
+  "Indexing failed (504)." A 504 is a raw platform gateway timeout, not an
+  app-level error — `/api/documents/embed-step` itself was running out of
+  time mid-request. Root cause: the previous fix made `withRetry` wait
+  out a 429 in place with a 2s/4s/8s backoff — but this project already
+  established (back in Step 4) that Vercel's free/Hobby plan hard-caps
+  serverless function duration around ~10s regardless of the
+  `maxDuration` export in code. 2s+4s+8s alone is 14s — comfortably
+  enough, on its own, to blow that cap and come back as an opaque 504
+  instead of a clean response. Fixed by changing strategy entirely: a 429
+  is no longer retried in place at all. `withRetry` now throws it
+  immediately, `embed-step` turns that into the same distinct `429
+  {rateLimited: true}` response as before, and the client's existing
+  drain-loop pacing (added in the previous fix) is what actually waits
+  out the limit — between requests, not inside one. Only a 503 "high
+  demand" still gets a couple of quick, small retries (400ms/800ms),
+  since that one usually clears almost immediately and isn't the kind of
+  limit that needs real seconds to drain. Also lowered `embed-step`'s
+  `BATCH_SIZE` again, 10 -> 6, for extra margin against the ~10s cap.
+  Syntax-checked clean, pushed. Muawiyah should retry the 3M documents
+  once more; if any still 504, the next lead is whether `ensureSchema()`
+  or the per-chunk `sql` writes are themselves slow, not Gemini.

@@ -12,37 +12,23 @@ if (!apiKey) {
 const client = new GoogleGenAI({ apiKey });
 
 /**
- * Pulls Gemini's own suggested wait out of a 429 error's retryDelay field
- * (and the "Please retry in Xms"/"Xs" phrase in the message as a
- * fallback). NOT trusted blindly: under a sustained per-minute burst,
- * Gemini has been observed suggesting "0s" or a few hundred ms — a delay
- * that short just re-hits the same still-full bucket instantly. Treated as
- * a floor, combined with our own backoff, never used alone.
- */
-function extractRetryDelayMs(message: string): number {
-  const fieldMatch = message.match(/"retryDelay":"(\d+(?:\.\d+)?)s"/);
-  const phraseMatch = message.match(/retry in ([\d.]+)(ms|s)\b/i);
-  const fromField = fieldMatch ? parseFloat(fieldMatch[1]) * 1000 : 0;
-  const fromPhrase = phraseMatch
-    ? parseFloat(phraseMatch[1]) * (phraseMatch[2] === "s" ? 1000 : 1)
-    : 0;
-  return Math.max(fromField, fromPhrase);
-}
-
-/**
- * Gemini's free tier returns 503 "high demand" fairly often, and a burst of
- * calls (e.g. uploading a large PDF — a hundred-plus embedding calls) can
- * trip its per-minute 429 rate limit too. Retries both, but a 429 is not
- * treated as "wait a moment": a per-minute bucket that's already full
- * needs real time to drain, so this uses a 2s-doubling backoff floor
- * (2s, 4s, 8s) regardless of what Gemini's own suggested delay says,
- * taking the larger of the two. Deliberately only 4 attempts (not more) —
- * this runs inside a time-limited request, so it's meant to fail fast and
- * let the caller's own retry queue (embed-step) pace the next attempt,
- * rather than block the whole request trying to outlast the limit itself.
+ * Gemini's free tier returns 503 "high demand" fairly often — worth a
+ * couple of quick retries with a small backoff, since it usually clears
+ * in well under a second. A 429 per-minute rate limit is different in
+ * kind, not degree: the bucket needs real seconds (Gemini itself often
+ * suggests 30-60s) to drain, which is longer than this request has to
+ * live. A platform's serverless functions have a real hard cap on
+ * request duration regardless of what maxDuration is set to in code
+ * (confirmed earlier in this project around ~10s on the free/Hobby
+ * tier) — retrying a 429 in place with any meaningful backoff risks
+ * blowing straight through that cap and coming back as a raw, opaque
+ * platform 504, which is strictly worse than a clean app-level error.
+ * So a 429 is NOT retried here at all: it's thrown immediately, and the
+ * caller (embed-step) turns that into a distinct rate-limited response
+ * for the client's own drain loop to pace its next attempt against.
  */
 async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
-  const maxAttempts = 4;
+  const maxAttempts = 3;
   let lastErr: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -55,22 +41,15 @@ async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
         message.includes("503") ||
         message.includes("UNAVAILABLE") ||
         message.includes("high demand");
-      const isRateLimited =
-        message.includes("429") ||
-        message.includes("RESOURCE_EXHAUSTED") ||
-        message.includes("Quota exceeded");
 
-      if ((!isOverloaded && !isRateLimited) || attempt === maxAttempts) {
+      if (isRateLimitError(err) || !isOverloaded || attempt === maxAttempts) {
         throw err;
       }
 
-      const backoffFloor = 2000 * 2 ** (attempt - 1) + Math.random() * 300;
-      const delayMs = isRateLimited
-        ? Math.max(extractRetryDelayMs(message), backoffFloor)
-        : backoffFloor;
+      const delayMs = 400 * 2 ** (attempt - 1) + Math.random() * 200;
       console.warn(
-        `[gemini] ${label} ${isRateLimited ? "rate-limited" : "overloaded"} ` +
-          `(attempt ${attempt}/${maxAttempts}), retrying in ${Math.round(delayMs)}ms`,
+        `[gemini] ${label} overloaded (attempt ${attempt}/${maxAttempts}), ` +
+          `retrying in ${Math.round(delayMs)}ms`,
       );
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
