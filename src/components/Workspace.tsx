@@ -57,6 +57,7 @@ export default function Workspace() {
     if (embedDraining.current) return;
     embedDraining.current = true;
     let rateLimitStreak = 0;
+    let lastRateLimitDetail: string | null = null;
     try {
       for (let i = 0; i < 500; i++) {
         const res = await fetch("/api/documents/embed-step", { method: "POST" });
@@ -66,11 +67,19 @@ export default function Workspace() {
           // real failure. Don't stop the drain: wait it out (growing a
           // little each time, capped at 20s) and keep going. Only give up
           // and surface an error after a long sustained run of these.
+          const body = await res.json().catch(() => null);
+          lastRateLimitDetail = body?.detail ?? lastRateLimitDetail;
           rateLimitStreak += 1;
-          if (rateLimitStreak > 15) {
+          if (rateLimitStreak > 8) {
+            // Surface Gemini's actual error text, not just a generic
+            // message — after batching chunks into far fewer requests,
+            // a *sustained* 429 like this is no longer expected, so the
+            // real text (quota name, limit, any model/size detail) is
+            // what's needed to diagnose it properly rather than guess.
             setEmbedError(
               "Indexing is stuck behind Gemini's rate limit for longer than " +
-                "expected — try again in a minute.",
+                "expected — try again in a minute." +
+                (lastRateLimitDetail ? ` (${lastRateLimitDetail})` : ""),
             );
             await refresh();
             break;
@@ -81,6 +90,7 @@ export default function Workspace() {
           continue;
         }
         rateLimitStreak = 0;
+        lastRateLimitDetail = null;
 
         if (!res.ok) {
           const body = await res.json().catch(() => null);
@@ -93,6 +103,13 @@ export default function Workspace() {
         const json = await res.json();
         await refresh();
         if (json.done) break;
+        // Defensive pacing even on a clean step: each step now costs
+        // Gemini roughly one request (batched chunks, see gemini.ts), so
+        // this is cheap insurance against still crossing the per-minute
+        // request cap if steps ever fire faster than expected (slow
+        // network, several tabs open, etc) — not a sign batching isn't
+        // working.
+        await new Promise((resolve) => setTimeout(resolve, 1200));
       }
     } catch {
       setEmbedError("Lost connection while indexing a document — try again.");

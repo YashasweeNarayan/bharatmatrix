@@ -400,3 +400,25 @@ disk here, and will be pushed in one go once the connection is live.
   drain-loop pacing all stay as the backstop for whatever residual rate
   limiting still happens — but they should now rarely if ever fire.
   Syntax-checked clean, pushed. This is the one that should actually hold.
+- **2026-11-05 (fourth follow-up, same day)** — Even after batching,
+  Muawiyah hit the same generic "stuck behind rate limit" banner again.
+  At 50 chunks/batch × ~900 chars/chunk (chunk.ts's `CHUNK_SIZE`), a batch
+  comfortably fits under `EMBED_BATCH_MAX_CHARS` (60k) in one Gemini
+  request — so this genuinely shouldn't still be a request-count problem
+  at this scale, and I don't have a way to inspect Gemini's real quota
+  state or Vercel's function logs from the sandbox to confirm what's
+  actually happening server-side. Rather than guess at a fourth theory,
+  made two honest, verifiable changes: (1) the error banner now includes
+  Gemini's actual raw error text in parentheses when it gives up, not
+  just the generic sentence — next time this fires, the literal quota
+  name/limit from Gemini's response will be visible instead of guessed
+  at; lowered the give-up threshold from 15 to 8 so that detail surfaces
+  sooner. (2) added a flat 1.2s pace between successful (non-rate-limited)
+  steps too, as cheap defensive insurance in case steps were firing
+  faster than assumed — not evidence batching is broken, just a safety
+  margin while the real signal (the detailed error text) gets collected.
+  Syntax-checked clean, pushed. Next time this happens, the banner's
+  parenthetical text is the actual diagnostic — that's what determines
+  whether this is really still a per-minute request problem or something
+  else entirely (e.g. a daily cap, or quota tracked differently than
+  assumed).
