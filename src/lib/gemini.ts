@@ -11,24 +11,38 @@ if (!apiKey) {
 
 const client = new GoogleGenAI({ apiKey });
 
-/** Pulls Gemini's own suggested wait out of a 429 error's retryDelay field. */
-function extractRetryDelayMs(message: string): number | null {
-  const match = message.match(/"retryDelay":"(\d+(?:\.\d+)?)s"/);
-  if (!match) return null;
-  return Math.ceil(parseFloat(match[1]) * 1000);
+/**
+ * Pulls Gemini's own suggested wait out of a 429 error's retryDelay field
+ * (and the "Please retry in Xms"/"Xs" phrase in the message as a
+ * fallback). NOT trusted blindly: under a sustained per-minute burst,
+ * Gemini has been observed suggesting "0s" or a few hundred ms — a delay
+ * that short just re-hits the same still-full bucket instantly. Treated as
+ * a floor, combined with our own backoff, never used alone.
+ */
+function extractRetryDelayMs(message: string): number {
+  const fieldMatch = message.match(/"retryDelay":"(\d+(?:\.\d+)?)s"/);
+  const phraseMatch = message.match(/retry in ([\d.]+)(ms|s)\b/i);
+  const fromField = fieldMatch ? parseFloat(fieldMatch[1]) * 1000 : 0;
+  const fromPhrase = phraseMatch
+    ? parseFloat(phraseMatch[1]) * (phraseMatch[2] === "s" ? 1000 : 1)
+    : 0;
+  return Math.max(fromField, fromPhrase);
 }
 
 /**
  * Gemini's free tier returns 503 "high demand" fairly often, and a burst of
- * calls (e.g. uploading several large PDFs at once, each needing a
- * hundred-plus embedding calls) can trip its per-minute 429 rate limit too.
- * Retries both: 503s with exponential backoff + jitter, 429s by waiting
- * Gemini's own suggested retryDelay (it tells you exactly how long, often
- * 30-60s) — so a transient spike or a burst doesn't surface as a
- * user-facing error.
+ * calls (e.g. uploading a large PDF — a hundred-plus embedding calls) can
+ * trip its per-minute 429 rate limit too. Retries both, but a 429 is not
+ * treated as "wait a moment": a per-minute bucket that's already full
+ * needs real time to drain, so this uses a 2s-doubling backoff floor
+ * (2s, 4s, 8s) regardless of what Gemini's own suggested delay says,
+ * taking the larger of the two. Deliberately only 4 attempts (not more) —
+ * this runs inside a time-limited request, so it's meant to fail fast and
+ * let the caller's own retry queue (embed-step) pace the next attempt,
+ * rather than block the whole request trying to outlast the limit itself.
  */
 async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
-  const maxAttempts = 5;
+  const maxAttempts = 4;
   let lastErr: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -50,9 +64,10 @@ async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
         throw err;
       }
 
-      const suggestedDelay = isRateLimited ? extractRetryDelayMs(message) : null;
-      const delayMs =
-        suggestedDelay ?? 1000 * 2 ** (attempt - 1) + Math.random() * 300;
+      const backoffFloor = 2000 * 2 ** (attempt - 1) + Math.random() * 300;
+      const delayMs = isRateLimited
+        ? Math.max(extractRetryDelayMs(message), backoffFloor)
+        : backoffFloor;
       console.warn(
         `[gemini] ${label} ${isRateLimited ? "rate-limited" : "overloaded"} ` +
           `(attempt ${attempt}/${maxAttempts}), retrying in ${Math.round(delayMs)}ms`,
@@ -62,6 +77,16 @@ async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
   }
 
   throw lastErr;
+}
+
+/** True if an error is Gemini's transient per-minute rate limit, not a real failure. */
+export function isRateLimitError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    message.includes("429") ||
+    message.includes("RESOURCE_EXHAUSTED") ||
+    message.includes("Quota exceeded")
+  );
 }
 
 export const EMBEDDING_MODEL = "gemini-embedding-2";

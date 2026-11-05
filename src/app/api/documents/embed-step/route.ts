@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
-import { embedTexts } from "@/lib/gemini";
+import { embedTexts, isRateLimitError } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -9,8 +9,10 @@ export const dynamic = "force-dynamic";
 // Small enough that a batch (plus any retry/backoff inside embedTexts) has
 // a good chance of finishing well within the request's time budget; large
 // enough that a 100+ page document doesn't need an unreasonable number of
-// round trips to finish.
-const BATCH_SIZE = 20;
+// round trips to finish. Lowered from 20 -> 10 after a real 150+ page
+// document still tripped Gemini's per-minute embedding rate limit —
+// smaller bursts per request, more (cheap) requests overall.
+const BATCH_SIZE = 10;
 
 /**
  * Embeds one batch of chunks for one document per call. Documents go
@@ -56,6 +58,24 @@ export async function POST() {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+
+        if (isRateLimitError(err)) {
+          // Transient: Gemini's per-minute embedding quota is full, not a
+          // real failure. Leave the document as 'embedding' (not 'failed')
+          // so the next /embed-step call just tries again — the client
+          // drain loop paces its retries on this distinct rateLimited
+          // flag rather than treating it as a hard stop.
+          return NextResponse.json(
+            {
+              done: false,
+              remaining: null,
+              rateLimited: true,
+              detail: message,
+            },
+            { status: 429 },
+          );
+        }
+
         await sql`
           update documents set status = 'failed', error = ${message}
           where id = ${doc.id}

@@ -317,3 +317,35 @@ disk here, and will be pushed in one go once the connection is live.
      only reaches `'ready'` (searchable) once every chunk is embedded.
   Syntax-checked clean, pushed. Should hold up against the AMD/3M/Boeing
   FinanceBench-style large-10-K testing going forward.
+- **2026-11-05 (follow-up, same day)** — That fix was incomplete. Muawiyah's
+  screenshot showed 3 of the 4 3M 10-Ks still stuck "indexing" and one
+  (`3M_2015_10K.pdf`, 158 pages) permanently `failed`, with the raw error
+  displayed in the UI: `"retryDelay":"0s"` and "Please retry in
+  345.14512ms." Two real bugs, both in how the first fix handled a 429:
+  1. `extractRetryDelayMs` trusted Gemini's suggested delay literally —
+     but under a sustained per-minute burst Gemini itself was suggesting
+     a near-zero wait (0s / 345ms), which just re-hit the same still-full
+     bucket instantly, burning all retry attempts in under a second.
+     Fixed: Gemini's suggestion is now a floor, combined with (never
+     below) our own 2s-doubling backoff (2s, 4s, 8s) — a per-minute quota
+     that's full needs real seconds to drain, not milliseconds.
+  2. `embed-step`'s catch block marked the *whole document* permanently
+     `failed` for what is actually a transient, self-clearing rate limit
+     — architecturally wrong, since the next call would've succeeded
+     fine once the minute rolled over. Fixed: a rate-limit error now
+     returns a distinct `429 {rateLimited: true}` response and leaves the
+     document's status as `'embedding'` (untouched) instead of writing
+     `failed` — the next `/embed-step` call just tries again.
+  Also: `Workspace.tsx`'s `drainEmbeddings()` no longer treats a
+  rate-limited step as a hard stop — it paces (growing wait, capped at
+  20s) and keeps draining, only surfacing an error after 15+ consecutive
+  rate-limited responses. Added a retry affordance (↺ icon) on any
+  `failed` document — new `PATCH /api/documents/[id]` resumes embedding
+  from wherever it left off (already-embedded chunks keep their vectors;
+  only the still-null ones get retried) rather than requiring a
+  re-upload. Also lowered `embed-step`'s `BATCH_SIZE` from 20 to 10
+  chunks per call, to shrink the burst size that can trip the limit in
+  the first place. Syntax-checked clean, pushed. Muawiyah should hit
+  retry (↺) on the failed `3M_2015_10K.pdf` and let the other three
+  finish draining — this time a rate limit should show up as patient
+  retrying, not a permanent failure.

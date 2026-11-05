@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import Link from "next/link";
-import { FileText, Loader2, Upload, X } from "lucide-react";
+import { FileText, Loader2, RotateCcw, Upload, X } from "lucide-react";
 import AskPanel from "@/components/AskPanel";
 
 type DocumentStatus = "processing" | "embedding" | "ready" | "failed";
@@ -56,9 +56,32 @@ export default function Workspace() {
   const drainEmbeddings = useCallback(async () => {
     if (embedDraining.current) return;
     embedDraining.current = true;
+    let rateLimitStreak = 0;
     try {
       for (let i = 0; i < 500; i++) {
         const res = await fetch("/api/documents/embed-step", { method: "POST" });
+
+        if (res.status === 429) {
+          // Gemini's per-minute embedding quota is full — transient, not a
+          // real failure. Don't stop the drain: wait it out (growing a
+          // little each time, capped at 20s) and keep going. Only give up
+          // and surface an error after a long sustained run of these.
+          rateLimitStreak += 1;
+          if (rateLimitStreak > 15) {
+            setEmbedError(
+              "Indexing is stuck behind Gemini's rate limit for longer than " +
+                "expected — try again in a minute.",
+            );
+            await refresh();
+            break;
+          }
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.min(3000 * rateLimitStreak, 20000)),
+          );
+          continue;
+        }
+        rateLimitStreak = 0;
+
         if (!res.ok) {
           const body = await res.json().catch(() => null);
           setEmbedError(
@@ -156,6 +179,16 @@ export default function Workspace() {
       setDocs((prev) => prev.filter((d) => d.id !== id));
     },
     [],
+  );
+
+  const retryDoc = useCallback(
+    async (id: string) => {
+      setEmbedError(null);
+      await fetch(`/api/documents/${id}`, { method: "PATCH" });
+      await refresh();
+      drainEmbeddings();
+    },
+    [refresh, drainEmbeddings],
   );
 
   return (
@@ -274,6 +307,18 @@ export default function Workspace() {
                   <span className="text-[12px] text-neutral-500">
                     {doc.page_count} page{doc.page_count === 1 ? "" : "s"}
                   </span>
+                )}
+                {doc.status === "failed" && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      retryDoc(doc.id);
+                    }}
+                    aria-label={`Retry ${doc.filename}`}
+                    className="rounded p-1 text-neutral-600 hover:bg-ink-700 hover:text-neutral-300"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
                 )}
                 <button
                   onClick={(e) => {

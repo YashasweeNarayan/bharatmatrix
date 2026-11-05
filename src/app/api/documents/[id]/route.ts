@@ -29,6 +29,32 @@ export async function GET(
   return NextResponse.json({ document: doc, pages });
 }
 
+// Retries a document stuck in 'failed' — most commonly a transient Gemini
+// rate-limit that (before this fix) incorrectly marked the whole document
+// permanently failed. Any chunks that already got embedded keep their
+// vectors; only the still-null ones get picked up again by
+// /api/documents/embed-step.
+export async function PATCH(
+  _req: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  await ensureSchema();
+
+  const [{ remaining }] = await sql`
+    select count(*)::int as remaining
+    from document_chunks
+    where document_id = ${params.id} and embedding is null
+  `;
+
+  await sql`
+    update documents
+    set status = ${remaining > 0 ? "embedding" : "ready"}, error = null
+    where id = ${params.id}
+  `;
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } },
