@@ -68,6 +68,22 @@ export function isRateLimitError(err: unknown): boolean {
   );
 }
 
+/**
+ * True if a rate-limit error is specifically the free tier's DAILY cap
+ * (1000 requests/day/project/model, confirmed via a real 429 whose
+ * retryDelay was ~19.7 hours) rather than the 100/minute one. Distinct
+ * because a per-minute limit is worth a short client-side wait, but a
+ * daily limit isn't going anywhere for hours — retrying it in a loop just
+ * burns time without changing the outcome.
+ */
+export function isDailyQuotaError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    isRateLimitError(err) &&
+    (message.includes("PerDay") || message.toLowerCase().includes("per day"))
+  );
+}
+
 export const EMBEDDING_MODEL = "gemini-embedding-2";
 export const EMBEDDING_DIMENSIONS = 768;
 // gemini-3.8-flash is the newest flagship model, capped at just 20
@@ -75,76 +91,58 @@ export const EMBEDDING_DIMENSIONS = 768;
 // Lite models generally get a more generous free-tier daily quota.
 export const CHAT_MODEL = "gemini-3.5-flash-lite";
 
-// The free-tier quota (`embed_content_free_tier_requests`, 100/minute) is
-// metered per API *request*, not per text embedded. This was the actual
-// cause of every 429 so far: embedding one chunk per request meant a
-// single 150-chunk 10-K alone needed ~150 requests — more than the whole
-// per-minute budget before any other document even got a turn. Gemini's
-// embedContent accepts an array of texts as `contents` and returns one
-// embedding per text in a single response — so one request can cover many
-// chunks at once. Capped conservatively (not at whatever the API's real
-// ceiling is) to stay well inside undocumented per-request token/size
-// limits, not to protect the per-minute request quota, which this exists
-// specifically to stop pressuring.
-const EMBED_BATCH_SIZE = 50;
-const EMBED_BATCH_MAX_CHARS = 60_000;
-
 /**
- * Embeds many texts using as few Gemini requests as possible: packs texts
- * into batches (bounded by both count and total characters) and sends each
- * batch as a single embedContent call with `contents` as an array, rather
- * than one call per text. This is a request-count optimization, not a
- * concurrency one — batches are sent one after another, not in parallel,
- * since parallel batches would just reintroduce the per-minute burst risk
- * this exists to avoid.
+ * Embeds each text with its own request. An earlier version of this tried
+ * to pack many texts into one call via `contents` as an array, on the
+ * (docs-suggested, SDK-unconfirmed) assumption that the JS SDK routes that
+ * through Gemini's real batch endpoint. Confirmed wrong in production: the
+ * SDK treated a 50-text array as multiple *parts of one content* and
+ * returned a single combined embedding, not 50 — "Batch embedding
+ * returned 1 vectors for 50 texts" on every call. So this reverts to one
+ * embedContent call per text, which is the only shape confirmed to
+ * actually return one correct vector per input.
+ *
+ * This also means the free tier's `embed_content_free_tier_requests`
+ * quota — confirmed via a real 429 to include a DAILY cap (1000
+ * requests/day/project/model, separate from the 100/minute one) — is
+ * genuinely 1-request-per-chunk and can't be shrunk by request-shaping
+ * alone. A single 150-chunk document costs ~150 of that 1000-request
+ * daily budget on its own. If that's still too tight once the daily
+ * quota resets, the real lever is sharding across multiple free API
+ * keys/projects (each gets its own independent 1000/day bucket) or
+ * moving off this free tier — not clever batching of a single key's
+ * calls, which doesn't reduce how many chunks need an embedding.
  */
 export async function embedTexts(texts: string[]): Promise<number[][]> {
-  if (texts.length === 0) return [];
+  const results: number[][] = new Array(texts.length);
+  const concurrency = 3;
+  let cursor = 0;
 
-  const batches: string[][] = [];
-  let current: string[] = [];
-  let currentChars = 0;
-  for (const text of texts) {
-    const wouldOverflow =
-      current.length >= EMBED_BATCH_SIZE ||
-      (current.length > 0 && currentChars + text.length > EMBED_BATCH_MAX_CHARS);
-    if (wouldOverflow) {
-      batches.push(current);
-      current = [];
-      currentChars = 0;
-    }
-    current.push(text);
-    currentChars += text.length;
-  }
-  if (current.length > 0) batches.push(current);
-
-  const results: number[][] = [];
-  for (const batch of batches) {
-    const response = await withRetry<
-      Awaited<ReturnType<typeof client.models.embedContent>>
-    >(
-      () =>
-        client.models.embedContent({
-          model: EMBEDDING_MODEL,
-          contents: batch,
-          config: { outputDimensionality: EMBEDDING_DIMENSIONS },
-        }),
-      "embedContent (batch)",
-    );
-    const embeddings = response.embeddings;
-    if (!embeddings || embeddings.length !== batch.length) {
-      throw new Error(
-        `Batch embedding returned ${embeddings?.length ?? 0} vectors for ` +
-          `${batch.length} texts — response shape didn't match the request.`,
+  async function worker() {
+    while (cursor < texts.length) {
+      const i = cursor++;
+      const response = await withRetry<
+        Awaited<ReturnType<typeof client.models.embedContent>>
+      >(
+        () =>
+          client.models.embedContent({
+            model: EMBEDDING_MODEL,
+            contents: texts[i],
+            config: { outputDimensionality: EMBEDDING_DIMENSIONS },
+          }),
+        "embedContent",
       );
-    }
-    for (const embedding of embeddings) {
-      if (!embedding.values) {
-        throw new Error("Embedding request returned no vector for a chunk.");
+      const values = response.embeddings?.[0]?.values;
+      if (!values) {
+        throw new Error(`Embedding request returned no vector for chunk ${i}.`);
       }
-      results.push(embedding.values);
+      results[i] = values;
     }
   }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, texts.length) }, worker),
+  );
   return results;
 }
 

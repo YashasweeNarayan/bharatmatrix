@@ -422,3 +422,42 @@ disk here, and will be pushed in one go once the connection is live.
   whether this is really still a per-minute request problem or something
   else entirely (e.g. a daily cap, or quota tracked differently than
   assumed).
+- **2026-11-05 (fifth follow-up, same day — the real diagnosis)** —
+  Muawiyah got the real error text and asked a sharper question: is there
+  an actual optimization/mathematics here, not just better error
+  handling? He was right to push, and the raw text answered both open
+  questions from the previous entry at once:
+  1. `"Embed content requests per day limit exceeded on Free Tier"`,
+     `quotaId: EmbedContentRequestsPerDayPerProjectPerModel-FreeTier`,
+     `limit: 1000`, retry in ~19h42m. It's a DAILY cap (1000/project/
+     model/day), separate from the 100/minute one — all of today's
+     per-minute tuning was chasing the wrong clock. This key is locked
+     out until roughly 1:30 PM IST tomorrow; no code change fixes that
+     today.
+  2. A second error — `"Batch embedding returned 1 vectors for 50
+     texts"` — proved the "batch chunks into one request" fix from
+     earlier today was actually broken the whole time: the `@google/genai`
+     JS SDK does NOT route a `contents` array through Gemini's real batch
+     endpoint the way the (unverified, docs-suggested) assumption held —
+     it treats the array as multiple *parts of one content* and returns a
+     single combined embedding, not one per text. The SDK source isn't
+     browsable from this sandbox (no registry/GitHub raw access) so this
+     was never actually confirmed before shipping it, and it was wrong.
+  Reverted `embedTexts` back to one `embedContent` call per chunk — the
+  only shape confirmed to return one correct vector per input. Added
+  `isDailyQuotaError()` alongside the existing `isRateLimitError()` so a
+  daily-cap 429 is distinguished from a per-minute one: `embed-step` now
+  returns a `dailyLimit` flag, and `Workspace.tsx`'s drain loop stops
+  immediately with a clear "resets in ~24h, will resume automatically"
+  message instead of burning ~90s retrying something that can't clear for
+  hours. The document stays `'embedding'` (not `'failed'`) either way, so
+  reopening the page tomorrow just resumes draining on its own.
+  Honest bottom line, told to Muawiyah directly: the per-chunk request
+  cost can't be shrunk by request-shaping alone (confirmed — batching
+  doesn't work with this SDK), so a 150-chunk document genuinely costs
+  ~150 of the 1000-request daily budget. If that's still too tight once
+  the quota resets, the real lever is sharding across multiple free
+  Gemini API keys/projects (each gets its own independent 1000/day
+  bucket) — not cleverer batching of one key, which doesn't reduce how
+  many chunks need embedding. Left that decision to Muawiyah rather than
+  building it speculatively. Syntax-checked clean, pushed.

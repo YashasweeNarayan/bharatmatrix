@@ -63,19 +63,30 @@ export default function Workspace() {
         const res = await fetch("/api/documents/embed-step", { method: "POST" });
 
         if (res.status === 429) {
-          // Gemini's per-minute embedding quota is full — transient, not a
-          // real failure. Don't stop the drain: wait it out (growing a
-          // little each time, capped at 20s) and keep going. Only give up
-          // and surface an error after a long sustained run of these.
           const body = await res.json().catch(() => null);
           lastRateLimitDetail = body?.detail ?? lastRateLimitDetail;
+
+          if (body?.dailyLimit) {
+            // Gemini's free-tier DAILY cap (not the per-minute one) — this
+            // won't clear for hours, so looping on short backoffs just
+            // wastes time. Stop immediately with a clear message instead.
+            setEmbedError(
+              "Hit Gemini's free-tier daily embedding limit — it resets after " +
+                "roughly 24 hours from when the quota window started. " +
+                "Indexing will resume automatically next time you open this " +
+                "page once it clears." +
+                (lastRateLimitDetail ? ` (${lastRateLimitDetail})` : ""),
+            );
+            await refresh();
+            break;
+          }
+
+          // Per-minute limit — transient, not a real failure. Don't stop
+          // the drain: wait it out (growing a little each time, capped at
+          // 20s) and keep going. Only give up and surface an error after a
+          // long sustained run of these.
           rateLimitStreak += 1;
           if (rateLimitStreak > 8) {
-            // Surface Gemini's actual error text, not just a generic
-            // message — after batching chunks into far fewer requests,
-            // a *sustained* 429 like this is no longer expected, so the
-            // real text (quota name, limit, any model/size detail) is
-            // what's needed to diagnose it properly rather than guess.
             setEmbedError(
               "Indexing is stuck behind Gemini's rate limit for longer than " +
                 "expected — try again in a minute." +

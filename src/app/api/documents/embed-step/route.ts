@@ -1,20 +1,19 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
-import { embedTexts, isRateLimitError } from "@/lib/gemini";
+import { embedTexts, isRateLimitError, isDailyQuotaError } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 
-// Raised back up now that embedTexts batches many chunks into a single
-// Gemini request instead of one request per chunk (see gemini.ts) — the
-// real fix for the rate limit, since the free-tier quota is metered per
-// *request*, not per text. A batch of this size now costs Gemini a single
-// request (its own internal batching caps at 50), so the limiting factor
-// here is just staying inside the platform's request-duration budget for
-// one embedContent call plus this many individual chunk writes, not
-// request-count pressure against the per-minute cap.
-const BATCH_SIZE = 50;
+// Reverted back down: embedTexts no longer batches multiple chunks into
+// one Gemini request (that assumption was wrong — see gemini.ts), so this
+// is genuinely 1 real request per chunk again, at concurrency 3. Sized to
+// finish comfortably inside the platform's hard ~10s function-duration
+// cap, not to manage the Gemini quota (which, now confirmed to include a
+// 1000/day cap, can't be helped by batch size at all — it's 1-request-
+// per-chunk no matter how this number is set).
+const BATCH_SIZE = 8;
 
 /**
  * Embeds one batch of chunks for one document per call. Documents go
@@ -62,16 +61,19 @@ export async function POST() {
         const message = err instanceof Error ? err.message : String(err);
 
         if (isRateLimitError(err)) {
-          // Transient: Gemini's per-minute embedding quota is full, not a
-          // real failure. Leave the document as 'embedding' (not 'failed')
-          // so the next /embed-step call just tries again — the client
-          // drain loop paces its retries on this distinct rateLimited
-          // flag rather than treating it as a hard stop.
+          // Transient (or, for the daily cap, not transient within this
+          // session but still not a real failure): leave the document as
+          // 'embedding' (not 'failed') either way, so draining just
+          // resumes naturally once the quota clears — a client restart
+          // shouldn't need a manual retry. dailyLimit tells the client
+          // not to bother looping on short backoffs for something that
+          // won't clear for hours.
           return NextResponse.json(
             {
               done: false,
               remaining: null,
               rateLimited: true,
+              dailyLimit: isDailyQuotaError(err),
               detail: message,
             },
             { status: 429 },
