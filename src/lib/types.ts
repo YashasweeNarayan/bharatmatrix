@@ -50,7 +50,27 @@ export function cellKey(documentId: string, questionId: string) {
 // single object, or anything else malformed — rendering with `.map` on
 // something that isn't an array is what crashed the whole page on click,
 // back in Step 4.
-export function citationsOf(cell: Cell | null | undefined): Citation[] {
+// Step 8: evaluation harness types — used by EvaluationPanel.tsx.
+export type EvalStatus = "pending" | "computing" | "done" | "failed" | null;
+export type EvalVerdict = "correct" | "partial" | "incorrect" | null;
+
+export type EvalCase = {
+  id: string;
+  question: string;
+  expected_answer: string;
+  ordinal: number;
+  status: EvalStatus;
+  actual_answer: string | null;
+  grounded: boolean | null;
+  citations: Citation[] | null;
+  verdict: EvalVerdict;
+  judge_explanation: string | null;
+  error: string | null;
+};
+
+export function citationsOf(
+  cell: { citations: unknown } | null | undefined,
+): Citation[] {
   const raw = cell?.citations;
   if (Array.isArray(raw)) return raw;
   if (typeof raw === "string") {

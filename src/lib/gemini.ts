@@ -361,3 +361,88 @@ export async function detectContradiction(
 
   return JSON.parse(text) as ContradictionResult;
 }
+
+export type JudgeVerdict = "correct" | "partial" | "incorrect";
+
+export type JudgeResult = {
+  verdict: JudgeVerdict;
+  explanation: string;
+};
+
+const JUDGE_SCHEMA = {
+  type: "object",
+  properties: {
+    verdict: {
+      type: "string",
+      enum: ["correct", "partial", "incorrect"],
+      description:
+        "'correct' if the actual answer states the same key facts as the " +
+        "expected answer (numbers, names, yes/no) even if worded " +
+        "differently or less complete. 'partial' if it gets some but not " +
+        "all of the key facts right, or is vague where the expected " +
+        "answer is specific. 'incorrect' if it states a different fact, " +
+        "says the information wasn't found when the expected answer shows " +
+        "it should have been, or is unrelated.",
+    },
+    explanation: {
+      type: "string",
+      description:
+        "One or two sentences on why, naming the specific fact(s) that " +
+        "matched or didn't.",
+    },
+  },
+  required: ["verdict", "explanation"],
+};
+
+/**
+ * Step 8 (evaluation harness): grades one system answer against a
+ * human-written ground-truth answer for the same question. This is a
+ * semantic comparison, not exact string matching — answers are natural
+ * language and can state the same fact in different words, so an LLM
+ * judge is more useful here than a deterministic diff. Deliberately a
+ * separate call from the Analyst/Verifier that produced the answer, so
+ * the same model that (possibly) got something wrong isn't the one
+ * grading itself from the same context.
+ */
+export async function judgeAnswer(
+  question: string,
+  expectedAnswer: string,
+  actualAnswer: string,
+  grounded: boolean,
+): Promise<JudgeResult> {
+  const systemInstruction =
+    "You are grading a document-QA system against a human-written ground " +
+    "truth answer, for a software evaluation harness. Be strict about " +
+    "factual accuracy (wrong numbers, dates, or names are 'incorrect', " +
+    "not 'partial') but lenient about wording, order, and extra correct " +
+    "detail the expected answer didn't mention.";
+
+  const response = await withRetry<
+    Awaited<ReturnType<typeof client.models.generateContent>>
+  >(
+    () =>
+      client.models.generateContent({
+        model: CHAT_MODEL,
+        contents:
+          `Question: ${question}\n\n` +
+          `Expected (ground truth) answer: ${expectedAnswer}\n\n` +
+          `System's actual answer (grounded=${grounded}): ${actualAnswer}`,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: JUDGE_SCHEMA,
+        },
+      }),
+    "generateContent (judge)",
+  );
+
+  const text = response.text;
+  if (!text) {
+    throw new Error(
+      "Model response had no text output — it may have been blocked or " +
+        "returned an unexpected shape.",
+    );
+  }
+
+  return JSON.parse(text) as JudgeResult;
+}

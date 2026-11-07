@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { AlertTriangle, FileText, Loader2, Plus, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, FileText, FlaskConical, Loader2, Plus, RotateCcw, X } from "lucide-react";
 import ReportPanel from "@/components/ReportPanel";
+import EvaluationPanel from "@/components/EvaluationPanel";
 import { Cell, Contradiction, MatrixData, cellKey, citationsOf } from "@/lib/types";
 
 export default function MatrixTable() {
@@ -16,6 +17,7 @@ export default function MatrixTable() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [checkingContradictions, setCheckingContradictions] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [evalOpen, setEvalOpen] = useState(false);
   const draining = useRef(false);
   const contradictionsDraining = useRef(false);
 
@@ -327,6 +329,13 @@ export default function MatrixTable() {
             Report
           </button>
         )}
+        <button
+          onClick={() => setEvalOpen(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-ink-700 px-3.5 py-2.5 text-[13px] text-neutral-300 hover:bg-ink-800"
+        >
+          <FlaskConical className="h-3.5 w-3.5" />
+          Evaluate
+        </button>
       </div>
 
       {data.questions.length === 0 ? (
@@ -494,6 +503,8 @@ export default function MatrixTable() {
       {reportOpen && (
         <ReportPanel data={data} onClose={() => setReportOpen(false)} />
       )}
+
+      {evalOpen && <EvaluationPanel onClose={() => setEvalOpen(false)} />}
     </div>
   );
 }

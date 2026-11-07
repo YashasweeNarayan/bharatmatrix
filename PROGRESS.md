@@ -590,3 +590,27 @@ disk here, and will be pushed in one go once the connection is live.
   but the daily-vs-per-minute quota distinction, the 504 duration-cap
   fix, and Step 7 (Reports) all remain in place and were genuine
   progress.
+- **2026-11-07 (Step 8 started: evaluation harness)** — Built a real
+  evaluation feature rather than just eyeballing answers against
+  GROUND_TRUTH_QA.md by hand. New "Evaluate" button (next to Report) opens
+  a panel that: (1) seeds the 10 ground-truth question/expected-answer
+  pairs from the synthetic finance PDF set with one click
+  (`POST /api/eval/seed`, hardcoded and idempotent — only inserts if the
+  table is empty); (2) runs each question through the *exact same* ask
+  pipeline `/api/ask` uses — embed the question, vector search top 10
+  chunks across ready documents, Analyst answer, Verifier check — via a
+  one-at-a-time drain (`/api/eval/step`), same pattern as
+  `/api/matrix/step` and `/api/contradictions/step`; (3) grades each
+  verified answer against its expected answer with a new `judgeAnswer()`
+  call in `gemini.ts` (separate from the Analyst, so the model that
+  answered isn't also the one grading itself), returning
+  correct/partial/incorrect plus a one-line explanation. Results show per
+  question with expected vs. actual side by side, grounded/ungrounded,
+  verdict badge, and a running correct/partial/incorrect + grounded-ratio
+  summary. New tables `eval_questions` and `eval_results` (one row per
+  question, like `question_contradictions`); `/api/eval/reset` requeues
+  everything for a re-run. Rate-limit handling mirrors embed-step: a 429
+  leaves the row `pending` (not `failed`) and tells the client whether
+  it's the daily cap so it doesn't waste time retrying short backoffs.
+  Syntax-checked clean, pushed. Ready to test end to end against the 10
+  finance PDFs sent earlier today.

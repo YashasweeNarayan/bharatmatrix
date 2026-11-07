@@ -137,6 +137,36 @@ export function ensureSchema(): Promise<void> {
           updated_at timestamptz not null default now()
         )
       `;
+
+      // Step 8: evaluation harness. A fixed set of question/expected-answer
+      // pairs (ground truth), run through the same ask pipeline the UI
+      // uses (embed -> vector search across ready documents -> Analyst ->
+      // Verifier), then judged against the expected answer by a separate
+      // Gemini call. One row per question (not per run) — re-running
+      // overwrites the previous result, same pattern as question_contradictions.
+      await sql`
+        create table if not exists eval_questions (
+          id uuid primary key default gen_random_uuid(),
+          question text not null,
+          expected_answer text not null,
+          ordinal int not null,
+          created_at timestamptz not null default now()
+        )
+      `;
+
+      await sql`
+        create table if not exists eval_results (
+          eval_question_id uuid primary key references eval_questions(id) on delete cascade,
+          status text not null default 'pending',
+          actual_answer text,
+          grounded boolean,
+          citations jsonb,
+          verdict text,
+          judge_explanation text,
+          error text,
+          updated_at timestamptz not null default now()
+        )
+      `;
     })();
   }
   return schemaReady;
