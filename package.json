@@ -16,7 +16,7 @@
     "lucide-react": "0.456.0",
     "@vercel/blob": "0.27.1",
     "postgres": "3.4.5",
-    "pdf-parse": "1.1.1",
+    "pdfjs-dist": "4.9.155",
     "mammoth": "1.8.0",
     "xlsx": "0.18.5",
     "@google/genai": "^1.0.0"

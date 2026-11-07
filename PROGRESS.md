@@ -636,3 +636,29 @@ disk here, and will be pushed in one go once the connection is live.
   Syntax-checked clean, pushed. Muawiyah should delete the failed document
   rows and re-upload the (already qpdf-normalized) PDF set once this
   deploys.
+- **2026-11-07 (real fix: replaced pdf-parse with pdfjs-dist)** — The
+  serialization-queue fix from the previous entry did NOT solve it:
+  re-uploading the same 10-file set a third time produced yet another
+  different scatter of errors on the same files ("bad XRef entry" vs
+  "Invalid number: -" vs "Invalid number: p", changing per file between
+  attempts). That ruled out pure request-level concurrency as the root
+  cause — it pointed at pdf-parse 1.1.1's bundled pdf.js fork (frozen
+  since ~2018) being unreliable on its own, not just unsafe when called
+  concurrently. Replaced it outright: `extract.ts` now imports
+  `pdfjs-dist` (pinned 4.9.155) directly — the actively maintained,
+  official PDF.js package — via its Node-compatible `legacy/build` entry
+  point, instead of pdf-parse's old copy of it. Verified locally before
+  pushing: ran the new extraction logic against all 10 finance PDFs with
+  the real pdfjs-dist package available on this machine, including 3
+  rounds of fully concurrent (`Promise.all`) extraction of all 10 at
+  once, matching Workspace.tsx's real upload pattern — zero failures
+  across 30 total extractions. Also: `next.config.mjs` now declares
+  `outputFileTracingIncludes` for pdfjs-dist's `standard_fonts/` data
+  (needed for accurate glyph metrics on the 14 standard PDF fonts;
+  Vercel's file tracer can't discover this directory on its own since
+  the path is built from `process.cwd()` at runtime, not a static
+  import). `pdf-parse` removed from package.json; its ambient type
+  declaration swapped for one covering pdfjs-dist's legacy subpath
+  instead. Syntax-checked clean, pushed. This should be the actual fix —
+  the previous entry's queue is harmless but no longer the thing doing
+  the protecting.

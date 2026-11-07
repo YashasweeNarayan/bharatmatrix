@@ -1,13 +1,20 @@
 import mammoth from "mammoth";
 import * as XLSX from "xlsx";
-// Importing the internal module (not the package's `index.js`) is
-// deliberate: pdf-parse's index.js has a debug block that runs at
-// module-load time and tries to read a bundled test PDF from disk, which
-// breaks once Next.js bundles this for a serverless function. The internal
-// module skips that entirely. It also has no usable TS types; the ambient
-// `declare module` in src/types/declarations.d.ts makes this default import
-// resolve as `any`, narrowed with the local types below.
-import pdfParse from "pdf-parse/lib/pdf-parse.js";
+import path from "path";
+// pdf-parse 1.1.1 (the previous dependency here) bundles its own ancient,
+// pre-worker pdf.js fork with shared/global parsing state, and a simple
+// in-process serialization queue around it (an earlier version of this
+// file) did NOT fix the problem: the same PDF kept failing with different,
+// nonsensical parser errors ("bad XRef entry" vs "Invalid number: p" vs
+// "Invalid number: -") across repeated upload attempts of an identical
+// file set that both `qpdf --check` and a modern, standalone pdfjs-dist
+// parsed without any error every time. That points at pdf-parse's bundled
+// fork itself being unreliable, not just a concurrency bug on top of it.
+// So this now depends on pdfjs-dist directly — the actively maintained,
+// official PDF.js package — instead of pdf-parse's frozen 2018-era copy
+// of it. The "legacy/build" entry point is pdfjs-dist's own
+// Node-compatible (no DOM/canvas) build.
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 
 export type ExtractedPage = {
   ordinal: number;
@@ -19,41 +26,16 @@ export type ExtractResult = {
   pages: ExtractedPage[];
 };
 
-type PdfPageData = {
-  getTextContent: () => Promise<{ items: Array<{ str?: string }> }>;
-};
-
-/**
- * Serializes every pdfParse() call within this server process to exactly
- * one at a time. pdf-parse 1.1.1 bundles a legacy, pre-worker pdf.js build
- * that was never designed to have multiple getDocument() calls in flight
- * concurrently in the same JS heap — it has internal shared/global parsing
- * state. Uploading several PDFs at once (Workspace.tsx uploads all
- * selected files via Promise.all) sends concurrent requests to
- * /api/documents, and if Vercel happens to route more than one onto the
- * same warm instance, their pdfParse() calls can interleave and corrupt
- * each other's in-flight parse state. Symptom confirmed in practice: the
- * exact same PDF failed with a different, nonsensical parser error
- * ("bad XRef entry" vs "Invalid number: p" vs "Invalid number: -") across
- * two separate upload attempts of the identical file set — the signature
- * of a race, not of a genuinely malformed file (qpdf --check and a modern
- * pdf.js both parsed every file in that set without any error). This
- * queue makes that race impossible by construction: whatever request
- * order requests arrive in, their pdfParse() calls run strictly one after
- * another within this process, never overlapping.
- */
-let pdfParseQueue: Promise<unknown> = Promise.resolve();
-
-function runSerialized<T>(fn: () => Promise<T>): Promise<T> {
-  const result = pdfParseQueue.then(fn, fn);
-  // Keep the queue chain alive regardless of whether this task succeeded
-  // or failed, so one bad PDF doesn't permanently wedge every later one.
-  pdfParseQueue = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  return result;
-}
+// Lets pdf.js resolve glyph metrics for the 14 standard PDF fonts (the
+// Helvetica family this project's own generated PDFs use, among others)
+// from its own bundled data instead of trying to reach the network for
+// it, which wouldn't be reachable from a locked-down serverless function
+// anyway. Built from process.cwd() + the known node_modules layout
+// rather than require.resolve(), so it doesn't depend on how Next's
+// bundler rewrites a require() call for a package's non-entry files.
+const STANDARD_FONT_DATA_URL =
+  path.join(process.cwd(), "node_modules", "pdfjs-dist", "standard_fonts") +
+  path.sep;
 
 /**
  * Pulls text out of a PDF, DOCX or XLSX buffer, split into "pages" — an
@@ -93,25 +75,41 @@ export async function extractDocument(
   return { pages: [{ ordinal: 1, label: "1", content: text }] };
 }
 
-async function extractPdf(buffer: Buffer): Promise<ExtractResult> {
-  const pages: ExtractedPage[] = [];
-  let pageNum = 0;
+type TextContentItem = { str?: string; hasEOL?: boolean };
 
-  await runSerialized(() =>
-    pdfParse(buffer, {
-      pagerender: async (pageData: PdfPageData) => {
-        pageNum += 1;
-        const textContent = await pageData.getTextContent();
-        const text = textContent.items
-          .map((item) => item.str ?? "")
-          .join(" ")
-          .replace(/\s+/g, " ")
-          .trim();
-        pages.push({ ordinal: pageNum, label: String(pageNum), content: text });
-        return text;
-      },
-    }),
-  );
+async function extractPdf(buffer: Buffer): Promise<ExtractResult> {
+  // pdf.js wants its own Uint8Array, and — important for a function that
+  // may be reused across requests in the same warm instance — a COPY of
+  // the buffer's bytes, not a view into it. A view (new Uint8Array(buffer.buffer, ...))
+  // shares memory with the Buffer and would let pdf.js's internal
+  // mutation of parsed data alias across concurrent calls in the same
+  // process; a copy makes each parse fully independent.
+  const data = new Uint8Array(buffer.length);
+  data.set(buffer);
+
+  const loadingTask = pdfjsLib.getDocument({
+    data,
+    standardFontDataUrl: STANDARD_FONT_DATA_URL,
+    useSystemFonts: true,
+  });
+
+  const pages: ExtractedPage[] = [];
+  try {
+    const doc = await loadingTask.promise;
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const textContent = await page.getTextContent();
+      const text = (textContent.items as TextContentItem[])
+        .map((item) => item.str ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+      pages.push({ ordinal: i, label: String(i), content: text });
+      page.cleanup();
+    }
+  } finally {
+    await loadingTask.destroy();
+  }
 
   const nonEmpty = pages.filter((p) => p.content.length > 0);
   if (nonEmpty.length === 0) {
