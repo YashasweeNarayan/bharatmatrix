@@ -24,6 +24,38 @@ type PdfPageData = {
 };
 
 /**
+ * Serializes every pdfParse() call within this server process to exactly
+ * one at a time. pdf-parse 1.1.1 bundles a legacy, pre-worker pdf.js build
+ * that was never designed to have multiple getDocument() calls in flight
+ * concurrently in the same JS heap — it has internal shared/global parsing
+ * state. Uploading several PDFs at once (Workspace.tsx uploads all
+ * selected files via Promise.all) sends concurrent requests to
+ * /api/documents, and if Vercel happens to route more than one onto the
+ * same warm instance, their pdfParse() calls can interleave and corrupt
+ * each other's in-flight parse state. Symptom confirmed in practice: the
+ * exact same PDF failed with a different, nonsensical parser error
+ * ("bad XRef entry" vs "Invalid number: p" vs "Invalid number: -") across
+ * two separate upload attempts of the identical file set — the signature
+ * of a race, not of a genuinely malformed file (qpdf --check and a modern
+ * pdf.js both parsed every file in that set without any error). This
+ * queue makes that race impossible by construction: whatever request
+ * order requests arrive in, their pdfParse() calls run strictly one after
+ * another within this process, never overlapping.
+ */
+let pdfParseQueue: Promise<unknown> = Promise.resolve();
+
+function runSerialized<T>(fn: () => Promise<T>): Promise<T> {
+  const result = pdfParseQueue.then(fn, fn);
+  // Keep the queue chain alive regardless of whether this task succeeded
+  // or failed, so one bad PDF doesn't permanently wedge every later one.
+  pdfParseQueue = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
+/**
  * Pulls text out of a PDF, DOCX or XLSX buffer, split into "pages" — an
  * actual page for PDFs, the whole document for DOCX (Word has no fixed
  * pagination outside of rendering), one entry per sheet for XLSX.
@@ -65,19 +97,21 @@ async function extractPdf(buffer: Buffer): Promise<ExtractResult> {
   const pages: ExtractedPage[] = [];
   let pageNum = 0;
 
-  await pdfParse(buffer, {
-    pagerender: async (pageData: PdfPageData) => {
-      pageNum += 1;
-      const textContent = await pageData.getTextContent();
-      const text = textContent.items
-        .map((item) => item.str ?? "")
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-      pages.push({ ordinal: pageNum, label: String(pageNum), content: text });
-      return text;
-    },
-  });
+  await runSerialized(() =>
+    pdfParse(buffer, {
+      pagerender: async (pageData: PdfPageData) => {
+        pageNum += 1;
+        const textContent = await pageData.getTextContent();
+        const text = textContent.items
+          .map((item) => item.str ?? "")
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+        pages.push({ ordinal: pageNum, label: String(pageNum), content: text });
+        return text;
+      },
+    }),
+  );
 
   const nonEmpty = pages.filter((p) => p.content.length > 0);
   if (nonEmpty.length === 0) {

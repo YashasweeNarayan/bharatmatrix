@@ -614,3 +614,25 @@ disk here, and will be pushed in one go once the connection is live.
   it's the daily cap so it doesn't waste time retrying short backoffs.
   Syntax-checked clean, pushed. Ready to test end to end against the 10
   finance PDFs sent earlier today.
+- **2026-11-07 (real bug: concurrent PDF uploads corrupting each other's
+  parse)** — Muawiyah uploaded the 10 finance PDFs twice; the same files
+  failed both times but with DIFFERENT nonsensical parser errors each run
+  ("bad XRef entry" vs "Invalid number: p" vs "Invalid number: -" on the
+  identical file across two attempts) — the signature of a race
+  condition, not genuinely malformed PDFs. Confirmed the files themselves
+  were fine: `qpdf --check` and a modern pdfjs-dist both parsed every one
+  without error. Root cause: `Workspace.tsx`'s `uploadFiles` sends all
+  selected files to `POST /api/documents` via `Promise.all` (fully
+  concurrent), and `extract.ts`'s `pdf-parse` 1.1.1 bundles an old,
+  pre-worker pdf.js build with shared/global parsing state never designed
+  for multiple concurrent `getDocument()`-equivalent calls in the same JS
+  heap. When Vercel routed two of those concurrent upload requests onto
+  the same warm instance, their `pdfParse()` calls interleaved and
+  corrupted each other's in-flight parse state. Fixed in `extract.ts`: a
+  simple in-process async queue (`runSerialized`) now wraps every
+  `pdfParse()` call so only one ever runs at a time within a given
+  server process, however many upload requests arrive concurrently — this
+  makes the race impossible by construction rather than just less likely.
+  Syntax-checked clean, pushed. Muawiyah should delete the failed document
+  rows and re-upload the (already qpdf-normalized) PDF set once this
+  deploys.
