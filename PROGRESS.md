@@ -662,3 +662,34 @@ disk here, and will be pushed in one go once the connection is live.
   instead. Syntax-checked clean, pushed. This should be the actual fix —
   the previous entry's queue is harmless but no longer the thing doing
   the protecting.
+- **2026-11-07 (that wasn't it either — real fix: serialize uploads, not
+  just extraction)** — Re-uploaded the same 10-file set after the
+  pdfjs-dist deploy: still only 1/10 succeeded, same two errors ("bad
+  XRef entry", "Invalid number: -"), and — tellingly — a *different*
+  single file survived each time (06_cascade last attempt, 05_nimbus
+  this one). Sent Muawiyah a zip of the files as a test of a
+  file-transit-corruption theory; before hearing back, re-examined why
+  every local verification kept passing 100% while production kept
+  failing ~90% of the time on byte-identical files. The answer: every
+  local test (both the pdf-parse-queue attempt and the pdfjs-dist
+  rewrite) called `extractPdf()` directly on a buffer read straight off
+  disk with `fs.readFileSync`. That never exercised the one thing
+  actually different in production — `Workspace.tsx`'s `uploadFiles`
+  sends all selected files to `POST /api/documents` at once via
+  `Promise.all`, and when several of those concurrent requests land on
+  the same warm Vercel instance, they race inside `req.formData()`'s
+  multipart body parsing *before extraction ever runs*. That matches
+  every symptom that didn't fit a pure extraction-library bug: corruption
+  landing on structural byte offsets (the xref table) in a way no
+  amount of fixing the parser downstream could prevent, a different
+  file winning the race each batch, and the same file failing
+  differently across attempts. Fix: `uploadFiles` now sends files to the
+  server one at a time (a plain sequential loop) instead of
+  `Promise.all`, removing the race at its source. Added a small
+  server-side async lock in `/api/documents/route.ts` around the
+  `formData()`-parse-and-buffer-read step as defense in depth, in case
+  multiple browser tabs or people ever upload concurrently. Syntax-
+  checked clean, pushed (`a4d36f5`). Muawiyah should delete the 9 failed
+  rows and re-upload the same PDF set once this deploys — if this really
+  is the root cause, all 10 should go to "ready" this time, no zip
+  needed.
