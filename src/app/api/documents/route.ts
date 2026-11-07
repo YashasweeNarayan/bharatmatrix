@@ -20,25 +20,49 @@ export async function GET() {
   return NextResponse.json({ documents });
 }
 
+// The upload UI now sends files to this route one at a time (see the
+// comment in Workspace.tsx's uploadFiles for why), which removes the
+// concurrency that was corrupting uploads. This lock is defense in
+// depth on top of that: if several browser tabs, or several people,
+// ever upload at once, requests landing on the same warm Vercel
+// instance still get serialized through req.formData()'s multipart
+// parsing and the raw buffer read, one at a time, rather than racing.
+let uploadLock: Promise<unknown> = Promise.resolve();
+function withUploadLock<T>(fn: () => Promise<T>): Promise<T> {
+  const result = uploadLock.then(fn, fn);
+  uploadLock = result.catch(() => {});
+  return result;
+}
+
 export async function POST(req: NextRequest) {
   await ensureSchema();
 
-  let formData: FormData;
+  let buffer: Buffer;
+  let file: File;
   try {
-    formData = await req.formData();
-  } catch {
+    const parsed = await withUploadLock(async () => {
+      const fd = await req.formData();
+      const f = fd.get("file");
+      if (!(f instanceof File)) {
+        throw new Error("NO_FILE");
+      }
+      const buf = Buffer.from(await f.arrayBuffer());
+      return { f, buf };
+    });
+    file = parsed.f;
+    buffer = parsed.buf;
+  } catch (err) {
+    if (err instanceof Error && err.message === "NO_FILE") {
+      return NextResponse.json(
+        { error: "No file provided." },
+        { status: 400 },
+      );
+    }
     return NextResponse.json(
       { error: "Expected a multipart/form-data upload." },
       { status: 400 },
     );
   }
-
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "No file provided." }, { status: 400 });
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
   const blobPathname = `documents/${randomUUID()}-${file.name}`;
 
   let blobUrl: string;

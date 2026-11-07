@@ -166,17 +166,28 @@ export default function Workspace() {
       setUploading((prev) => [...prev, ...list.map((f) => f.name)]);
       setEmbedError(null);
 
-      await Promise.all(
-        list.map(async (file) => {
-          const body = new FormData();
-          body.append("file", file);
-          try {
-            await fetch("/api/documents", { method: "POST", body });
-          } finally {
-            setUploading((prev) => prev.filter((n) => n !== file.name));
-          }
-        }),
-      );
+      // Deliberately sequential, not Promise.all. Every upload failure
+      // we chased (bad XRef entry / "Invalid number: -" errors, a
+      // *different* file surviving each attempt, inconsistent errors on
+      // byte-identical files that parsed perfectly in isolated local
+      // tests) pointed at the one thing those local tests never
+      // exercised: several /api/documents POSTs hitting the same warm
+      // Vercel function instance at once and racing inside
+      // `req.formData()`'s multipart body parsing, corrupting the raw
+      // bytes before extraction ever runs. Uploading one file at a time
+      // removes that race entirely instead of papering over it further
+      // down the pipeline (see the matching server-side lock in
+      // /api/documents/route.ts for the belt-and-suspenders half of
+      // this fix).
+      for (const file of list) {
+        const body = new FormData();
+        body.append("file", file);
+        try {
+          await fetch("/api/documents", { method: "POST", body });
+        } finally {
+          setUploading((prev) => prev.filter((n) => n !== file.name));
+        }
+      }
       await refresh();
       drainEmbeddings();
     },
