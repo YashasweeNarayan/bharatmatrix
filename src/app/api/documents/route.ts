@@ -4,17 +4,28 @@ import { randomUUID } from "crypto";
 import { sql, ensureSchema } from "@/lib/db";
 import { extractDocument } from "@/lib/extract";
 import { chunkPages } from "@/lib/chunk";
+import { requireUser, UnauthorizedError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 // See the comment in /api/matrix/route.ts — same static-caching gotcha.
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   await ensureSchema();
+  let user;
+  try {
+    user = await requireUser(req);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
+    throw err;
+  }
   const documents = await sql`
     select id, filename, mime_type, status, page_count, error, created_at
     from documents
+    where user_id = ${user.id}
     order by created_at desc
   `;
   return NextResponse.json({ documents });
@@ -36,6 +47,16 @@ function withUploadLock<T>(fn: () => Promise<T>): Promise<T> {
 
 export async function POST(req: NextRequest) {
   await ensureSchema();
+
+  let user;
+  try {
+    user = await requireUser(req);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
+    throw err;
+  }
 
   let buffer: Buffer;
   let file: File;
@@ -85,8 +106,8 @@ export async function POST(req: NextRequest) {
   }
 
   const [doc] = await sql`
-    insert into documents (filename, mime_type, blob_url, status)
-    values (${file.name}, ${file.type || "application/octet-stream"}, ${blobUrl}, 'processing')
+    insert into documents (filename, mime_type, blob_url, status, user_id)
+    values (${file.name}, ${file.type || "application/octet-stream"}, ${blobUrl}, 'processing', ${user.id})
     returning id
   `;
 

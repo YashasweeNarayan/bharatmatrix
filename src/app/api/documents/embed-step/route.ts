@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
 import {
   embedTexts,
   isRateLimitError,
   isDailyQuotaError,
 } from "@/lib/gemini";
+import { requireUser, UnauthorizedError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -28,12 +29,21 @@ const BATCH_SIZE = 8;
  * all-or-nothing update), so a partial batch still makes real progress if
  * this call gets cut off.
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
   await ensureSchema();
+  let user;
+  try {
+    user = await requireUser(req);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
+    throw err;
+  }
 
   const [doc] = await sql`
     select id from documents
-    where status = 'embedding'
+    where status = 'embedding' and user_id = ${user.id}
     order by created_at asc
     limit 1
   `;
@@ -100,7 +110,7 @@ export async function POST() {
     select count(*)::int as remaining
     from document_chunks dc
     join documents d on d.id = dc.document_id
-    where d.status = 'embedding' and dc.embedding is null
+    where d.status = 'embedding' and dc.embedding is null and d.user_id = ${user.id}
   `;
 
   return NextResponse.json({ done: remaining === 0, remaining });

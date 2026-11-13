@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import Link from "next/link";
-import { FileText, Loader2, RotateCcw, Upload, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FileText, Loader2, LogOut, RotateCcw, Upload, X } from "lucide-react";
 import AskPanel from "@/components/AskPanel";
 
 type DocumentStatus = "processing" | "embedding" | "ready" | "failed";
@@ -27,7 +28,16 @@ type DocumentPage = {
 const ACCEPTED =
   ".pdf,.docx,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-export default function Workspace() {
+export default function Workspace({ userEmail }: { userEmail: string }) {
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const logout = useCallback(async () => {
+    setLoggingOut(true);
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/");
+    router.refresh();
+  }, [router]);
+
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string[]>([]);
@@ -236,12 +246,25 @@ export default function Workspace() {
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
           Workspace
         </h1>
-        <Link
-          href="/matrix"
-          className="rounded-full border border-ink-700 px-4 py-2 text-[13px] font-medium text-neutral-300 transition-colors hover:border-ink-600 hover:text-white"
-        >
-          Open matrix →
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/matrix"
+            className="rounded-full border border-ink-700 px-4 py-2 text-[13px] font-medium text-neutral-300 transition-colors hover:border-ink-600 hover:text-white"
+          >
+            Open matrix →
+          </Link>
+          <span className="hidden text-[13px] text-neutral-500 sm:inline">
+            {userEmail}
+          </span>
+          <button
+            onClick={logout}
+            disabled={loggingOut}
+            className="flex items-center gap-1.5 rounded-full border border-ink-700 px-3 py-2 text-[13px] font-medium text-neutral-300 transition-colors hover:border-ink-600 hover:text-white disabled:opacity-50"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Log out
+          </button>
+        </div>
       </div>
       <p className="mt-2 text-[14px] text-neutral-400">
         Upload annual reports, investor decks or audit reports. BharatMatrix

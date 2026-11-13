@@ -2,12 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
 import { embedText, answerFromContext } from "@/lib/gemini";
 import { verifyGrounding } from "@/lib/verify";
+import { requireUser, UnauthorizedError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   await ensureSchema();
+  let user;
+  try {
+    user = await requireUser(req);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
+    throw err;
+  }
 
   const body = await req.json().catch(() => null);
   const question =
@@ -21,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
 
   const readyDocs = await sql`
-    select id from documents where status = 'ready'
+    select id from documents where status = 'ready' and user_id = ${user.id}
   `;
   if (readyDocs.length === 0) {
     return NextResponse.json(
@@ -54,7 +64,7 @@ export async function POST(req: NextRequest) {
            dc.embedding <=> ${vectorLiteral}::vector as distance
     from document_chunks dc
     join documents d on d.id = dc.document_id
-    where d.status = 'ready' and dc.embedding is not null
+    where d.status = 'ready' and dc.embedding is not null and d.user_id = ${user.id}
     order by distance asc
     limit 10
   `;

@@ -1,7 +1,15 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import MatrixHero from "@/components/MatrixHero";
+import HeaderAuthControls from "@/components/HeaderAuthControls";
+import { ensureSchema } from "@/lib/db";
+import { SESSION_COOKIE, getUserByToken } from "@/lib/auth";
 
-export default function Home() {
+export default async function Home() {
+  await ensureSchema();
+  const token = cookies().get(SESSION_COOKIE)?.value;
+  const user = await getUserByToken(token);
+
   return (
     <main className="bg-grain relative min-h-screen overflow-hidden bg-ink-950">
       <div
@@ -25,12 +33,7 @@ export default function Home() {
             BharatMatrix
           </span>
         </div>
-        <Link
-          href="/workspace"
-          className="rounded-full bg-neutral-100 px-4 py-2 text-[13px] font-medium text-ink-950 transition-colors hover:bg-white"
-        >
-          Open workspace
-        </Link>
+        <HeaderAuthControls email={user?.email ?? null} />
       </header>
 
       <section className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 pb-24 pt-10 md:grid-cols-2 md:gap-8 md:px-12 md:pt-20">
@@ -49,10 +52,10 @@ export default function Home() {
           </p>
           <div className="mt-8 flex items-center gap-4">
             <Link
-              href="/workspace"
+              href={user ? "/workspace" : "/signup"}
               className="rounded-full bg-saffron-500 px-5 py-2.5 text-[13px] font-medium text-ink-950 transition-colors hover:bg-saffron-400"
             >
-              Open workspace
+              {user ? "Open workspace" : "Get started"}
             </Link>
             <span className="text-[13px] text-neutral-500">
               No finance background required.

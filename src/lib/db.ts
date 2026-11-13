@@ -31,6 +31,34 @@ export function ensureSchema(): Promise<void> {
       await sql`create extension if not exists pgcrypto`;
       await sql`create extension if not exists vector`;
 
+      // Accounts. password_hash is a bcrypt hash — the real password is
+      // never stored anywhere.
+      await sql`
+        create table if not exists users (
+          id uuid primary key default gen_random_uuid(),
+          email text not null unique,
+          password_hash text not null,
+          created_at timestamptz not null default now()
+        )
+      `;
+
+      // A session is a random, unguessable token handed to the browser as
+      // an httpOnly cookie. The cookie itself carries no information other
+      // than the token — who it belongs to and whether it's still valid
+      // lives here, server-side, so a session can be revoked (logout,
+      // expiry) just by deleting or not finding its row.
+      await sql`
+        create table if not exists sessions (
+          token text primary key,
+          user_id uuid not null references users(id) on delete cascade,
+          created_at timestamptz not null default now(),
+          expires_at timestamptz not null
+        )
+      `;
+      await sql`
+        create index if not exists sessions_user_id_idx on sessions (user_id)
+      `;
+
       await sql`
         create table if not exists documents (
           id uuid primary key default gen_random_uuid(),
@@ -42,6 +70,18 @@ export function ensureSchema(): Promise<void> {
           error text,
           created_at timestamptz not null default now()
         )
+      `;
+
+      // Multi-tenancy: added after documents already existed in
+      // production, so this is nullable rather than backfilled — any
+      // pre-auth rows just become permanently invisible once every query
+      // below filters by user_id (never deleted, just orphaned). See
+      // PROGRESS.md for the note on why.
+      await sql`
+        alter table documents add column if not exists user_id uuid references users(id) on delete cascade
+      `;
+      await sql`
+        create index if not exists documents_user_id_idx on documents (user_id)
       `;
 
       await sql`
@@ -98,6 +138,12 @@ export function ensureSchema(): Promise<void> {
           created_at timestamptz not null default now()
         )
       `;
+      await sql`
+        alter table questions add column if not exists user_id uuid references users(id) on delete cascade
+      `;
+      await sql`
+        create index if not exists questions_user_id_idx on questions (user_id)
+      `;
 
       await sql`
         create table if not exists matrix_cells (
@@ -152,6 +198,12 @@ export function ensureSchema(): Promise<void> {
           ordinal int not null,
           created_at timestamptz not null default now()
         )
+      `;
+      await sql`
+        alter table eval_questions add column if not exists user_id uuid references users(id) on delete cascade
+      `;
+      await sql`
+        create index if not exists eval_questions_user_id_idx on eval_questions (user_id)
       `;
 
       await sql`

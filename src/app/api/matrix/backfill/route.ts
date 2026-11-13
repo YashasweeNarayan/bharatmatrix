@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
+import { requireUser, UnauthorizedError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 10;
@@ -12,9 +13,22 @@ export const maxDuration = 10;
  * compute them here (see /api/matrix/step for why: a single request can't
  * safely await a Gemini call per missing cell on Vercel's free plan). The
  * client drains them afterwards one at a time via /api/matrix/step.
+ *
+ * Both sides of the cross join are scoped to the signed-in user — without
+ * that, this would pair one user's documents with another user's
+ * questions.
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
   await ensureSchema();
+  let user;
+  try {
+    user = await requireUser(req);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
+    throw err;
+  }
 
   const missing = await sql`
     select d.id as document_id, q.id as question_id
@@ -23,6 +37,7 @@ export async function POST() {
     left join matrix_cells mc
       on mc.document_id = d.id and mc.question_id = q.id
     where d.status = 'ready' and mc.id is null
+      and d.user_id = ${user.id} and q.user_id = ${user.id}
   `;
 
   if (missing.length === 0) {
@@ -37,6 +52,7 @@ export async function POST() {
     left join matrix_cells mc
       on mc.document_id = d.id and mc.question_id = q.id
     where d.status = 'ready' and mc.id is null
+      and d.user_id = ${user.id} and q.user_id = ${user.id}
     on conflict (document_id, question_id) do nothing
   `;
 

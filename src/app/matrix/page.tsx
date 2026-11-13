@@ -1,11 +1,22 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import MatrixTable from "@/components/MatrixTable";
+import { ensureSchema } from "@/lib/db";
+import { SESSION_COOKIE, getUserByToken } from "@/lib/auth";
 
 export const metadata = {
   title: "Matrix — BharatMatrix",
 };
 
-export default function MatrixPage() {
+export default async function MatrixPage() {
+  await ensureSchema();
+  const token = cookies().get(SESSION_COOKIE)?.value;
+  const user = await getUserByToken(token);
+  if (!user) {
+    redirect("/login?next=/matrix");
+  }
+
   return (
     <main className="bg-grain min-h-screen bg-ink-950">
       <div className="mx-auto max-w-6xl px-6 py-14 md:px-12">

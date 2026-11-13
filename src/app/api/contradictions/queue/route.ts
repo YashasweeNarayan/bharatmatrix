@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
+import { requireUser, UnauthorizedError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 10;
@@ -14,14 +15,25 @@ export const dynamic = "force-dynamic";
  * via /api/contradictions/step, or a single request risks the same ~10s
  * platform timeout that silently broke "Add column" before.
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
   await ensureSchema();
+  let user;
+  try {
+    user = await requireUser(req);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
+    throw err;
+  }
 
   const eligible = await sql`
     select mc.question_id
     from matrix_cells mc
     join documents d on d.id = mc.document_id
+    join questions q on q.id = mc.question_id
     where mc.status = 'ready' and mc.grounded = true and d.status = 'ready'
+      and d.user_id = ${user.id} and q.user_id = ${user.id}
     group by mc.question_id
     having count(*) >= 2
   `;

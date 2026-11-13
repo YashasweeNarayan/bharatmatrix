@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
 import { computeCell } from "@/lib/matrix";
+import { requireUser, UnauthorizedError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -19,16 +20,30 @@ export const maxDuration = 30;
  *
  * Also recovers cells stuck in 'computing' from a previous request that
  * got killed this way, by treating them as eligible again after 2 minutes.
+ *
+ * Scoped to the signed-in caller: only picks up cells on that user's own
+ * documents/questions, so one person's drain loop never computes (or
+ * burns Gemini quota on) another user's matrix.
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
   await ensureSchema();
+  let user;
+  try {
+    user = await requireUser(req);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
+    throw err;
+  }
 
   const [next] = await sql`
     select mc.document_id, mc.question_id, q.text as question_text
     from matrix_cells mc
     join questions q on q.id = mc.question_id
-    where mc.status = 'pending'
-       or (mc.status = 'computing' and mc.updated_at < now() - interval '2 minutes')
+    where (mc.status = 'pending'
+       or (mc.status = 'computing' and mc.updated_at < now() - interval '2 minutes'))
+      and q.user_id = ${user.id}
     order by mc.updated_at asc
     limit 1
   `;
@@ -45,9 +60,11 @@ export async function POST() {
 
   const [{ remaining }] = await sql`
     select count(*)::int as remaining
-    from matrix_cells
-    where status = 'pending'
-       or (status = 'computing' and updated_at < now() - interval '2 minutes')
+    from matrix_cells mc
+    join questions q on q.id = mc.question_id
+    where (mc.status = 'pending'
+       or (mc.status = 'computing' and mc.updated_at < now() - interval '2 minutes'))
+      and q.user_id = ${user.id}
   `;
 
   return NextResponse.json({ done: remaining === 0, remaining });

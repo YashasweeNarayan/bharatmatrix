@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
+import { requireUser, UnauthorizedError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,10 +83,21 @@ const SEED_CASES = [
  * /api/eval/step can drain them the same way embed-step drains chunks —
  * no separate "queue" call needed.
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
   await ensureSchema();
+  let user;
+  try {
+    user = await requireUser(req);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
+    throw err;
+  }
 
-  const [{ count }] = await sql`select count(*)::int as count from eval_questions`;
+  const [{ count }] = await sql`
+    select count(*)::int as count from eval_questions where user_id = ${user.id}
+  `;
   if (count > 0) {
     return NextResponse.json({ inserted: 0, alreadySeeded: true });
   }
@@ -93,8 +105,8 @@ export async function POST() {
   for (let i = 0; i < SEED_CASES.length; i++) {
     const c = SEED_CASES[i];
     const [row] = await sql`
-      insert into eval_questions (question, expected_answer, ordinal)
-      values (${c.question}, ${c.expected_answer}, ${i})
+      insert into eval_questions (question, expected_answer, ordinal, user_id)
+      values (${c.question}, ${c.expected_answer}, ${i}, ${user.id})
       returning id
     `;
     await sql`

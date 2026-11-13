@@ -6,3 +6,7 @@
 // src/lib/extract.ts.
 declare module "pdfjs-dist/legacy/build/pdf.js";
 declare module "mammoth";
+// bcryptjs's bundled types have been inconsistent across versions with
+// this project's moduleResolution setting; declaring it loosely here
+// avoids a build break over a types mismatch rather than a real bug.
+declare module "bcryptjs";

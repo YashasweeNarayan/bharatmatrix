@@ -10,7 +10,10 @@ import { verifyGrounding } from "@/lib/verify";
  * a separate judge call. One result per question; re-running overwrites
  * the previous one, same as computeContradiction in contradiction.ts.
  */
-export async function computeEval(evalQuestionId: string): Promise<void> {
+export async function computeEval(
+  evalQuestionId: string,
+  userId: string,
+): Promise<void> {
   await sql`
     update eval_results set status = 'computing', updated_at = now()
     where eval_question_id = ${evalQuestionId}
@@ -25,7 +28,9 @@ export async function computeEval(evalQuestionId: string): Promise<void> {
     const question = evalQuestion.question as string;
     const expectedAnswer = evalQuestion.expected_answer as string;
 
-    const readyDocs = await sql`select id from documents where status = 'ready'`;
+    const readyDocs = await sql`
+      select id from documents where status = 'ready' and user_id = ${userId}
+    `;
     if (readyDocs.length === 0) {
       throw new Error("No documents are ready yet — upload and index some first.");
     }
@@ -38,7 +43,7 @@ export async function computeEval(evalQuestionId: string): Promise<void> {
              dc.embedding <=> ${vectorLiteral}::vector as distance
       from document_chunks dc
       join documents d on d.id = dc.document_id
-      where d.status = 'ready' and dc.embedding is not null
+      where d.status = 'ready' and dc.embedding is not null and d.user_id = ${userId}
       order by distance asc
       limit 10
     `;
