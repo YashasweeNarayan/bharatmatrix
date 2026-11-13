@@ -883,3 +883,43 @@ disk here, and will be pushed in one go once the connection is live.
   needs pgvector >= 0.5.0 — an older extension version on some Postgres
   host degrades to the exact scan instead of breaking every request
   through `ensureSchema()`. Syntax-checked clean, pushed (`1c38aff`).
+
+- **2026-11-13 (hybrid retrieval: dense + keyword + reranker)** —
+  Requested explicitly: retrieval upgraded to match the Hebbia-style
+  architecture (dense + BM25/keyword search, with a reranker as a
+  second pass), instead of dense-vector-only search.
+
+  What changed, in `src/lib/retrieve.ts` (new, shared by `/api/ask`
+  and `lib/eval.ts`):
+  1. Dense search (unchanged: pgvector cosine distance over the HNSW
+     index from the previous entry) and a new keyword/lexical search
+     run in parallel. Keyword search uses a new generated `tsvector`
+     column (`content_tsv`, auto-maintained by Postgres from
+     `content`) plus a GIN index, queried with
+     `websearch_to_tsquery`/`ts_rank_cd`.
+  2. The two ranked lists are merged with Reciprocal Rank Fusion (RRF,
+     k=60, the standard default) — fusing by each list's RANK rather
+     than its raw score, since cosine distance and `ts_rank_cd` aren't
+     on comparable scales and were never meant to be compared
+     directly.
+  3. The fused candidate pool (up to 60, drawn from both search types,
+     still windowed per-document so one document can't crowd out the
+     pool before fusion even happens) is reranked by a new
+     `rerankChunks()` function in `gemini.ts` — one extra Gemini call
+     that reads the real question against every candidate's real text
+     and reorders by actual relevance, then trims to a final top 20
+     for the Analyst. Fails soft: if the rerank call errors, the RRF
+     order is used instead rather than losing the question.
+
+  `src/lib/matrix.ts`'s single-document `computeCell()` retrieval was
+  deliberately left unchanged — it's already scoped to one document
+  at a time, so cross-document fusion has nothing to fix there.
+
+  Syntax-checked clean, pushed (`15e1449`). Trade-offs explained to
+  the user directly in the same reply (not just here): added latency
+  from the extra rerank call, extra Gemini request/token cost per
+  question, and two honesty caveats — Postgres's `ts_rank_cd` is a
+  TF-based rank, not a literal BM25 formula, and the reranker is the
+  existing Gemini chat model standing in for a dedicated small
+  cross-encoder model, which is heavier per call and shares the same
+  request quota as every other Gemini call in the pipeline.
