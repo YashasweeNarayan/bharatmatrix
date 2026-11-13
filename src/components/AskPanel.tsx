@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, LayoutGrid, Check } from "lucide-react";
 import clsx from "clsx";
 
 type Citation = {
@@ -27,9 +27,13 @@ export default function AskPanel({
   filenameById: FilenameLookup;
 }) {
   const [question, setQuestion] = useState("");
+  const [askedQuestion, setAskedQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnswerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [movingToMatrix, setMovingToMatrix] = useState(false);
+  const [movedToMatrix, setMovedToMatrix] = useState(false);
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   const disabled = readyCount === 0 || loading;
 
@@ -38,6 +42,8 @@ export default function AskPanel({
     setLoading(true);
     setError(null);
     setResult(null);
+    setMovedToMatrix(false);
+    setMoveError(null);
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
@@ -49,11 +55,40 @@ export default function AskPanel({
         setError(data.error ?? "Something went wrong.");
       } else {
         setResult(data);
+        setAskedQuestion(question);
       }
     } catch {
       setError("Couldn't reach the server.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // This is purely opt-in: answering a question here never adds it to
+  // the Matrix on its own. Only clicking this button does — it just
+  // calls the same /api/questions POST the Matrix page's own "add
+  // question" input uses, so the question gets a column computed
+  // against every ready document, same as if typed there directly.
+  async function moveToMatrix() {
+    if (!askedQuestion.trim() || movingToMatrix) return;
+    setMovingToMatrix(true);
+    setMoveError(null);
+    try {
+      const res = await fetch("/api/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: askedQuestion }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMoveError(data.error ?? "Couldn't add this to the Matrix.");
+      } else {
+        setMovedToMatrix(true);
+      }
+    } catch {
+      setMoveError("Couldn't reach the server.");
+    } finally {
+      setMovingToMatrix(false);
     }
   }
 
@@ -86,27 +121,58 @@ export default function AskPanel({
           }
           className="w-full resize-none rounded-lg border border-ink-700 bg-ink-900/60 px-3.5 py-2.5 text-[13px] text-neutral-200 placeholder:text-neutral-600 focus:border-saffron-500"
         />
-        <button
-          onClick={ask}
-          disabled={disabled || !question.trim()}
-          className={clsx(
-            "flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
-            disabled || !question.trim()
-              ? "cursor-not-allowed bg-ink-800 text-neutral-600"
-              : "bg-saffron-500 text-ink-950 hover:bg-saffron-400",
+        <div className="flex items-center gap-2">
+          <button
+            onClick={ask}
+            disabled={disabled || !question.trim()}
+            className={clsx(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
+              disabled || !question.trim()
+                ? "cursor-not-allowed bg-ink-800 text-neutral-600"
+                : "bg-saffron-500 text-ink-950 hover:bg-saffron-400",
+            )}
+          >
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Search className="h-3.5 w-3.5" />
+            )}
+            Ask
+          </button>
+
+          {result && (
+            <button
+              onClick={moveToMatrix}
+              disabled={movingToMatrix || movedToMatrix}
+              title="Add this question as a column computed against every document in the Matrix"
+              className={clsx(
+                "flex flex-shrink-0 items-center justify-center gap-1.5 rounded-lg border px-4 py-2.5 text-[13px] font-medium transition-colors",
+                movedToMatrix
+                  ? "cursor-default border-matrix-500/30 bg-matrix-500/10 text-matrix-400"
+                  : movingToMatrix
+                    ? "cursor-not-allowed border-ink-700 bg-ink-800 text-neutral-600"
+                    : "border-ink-700 bg-ink-900/60 text-neutral-300 hover:border-saffron-500 hover:text-saffron-400",
+              )}
+            >
+              {movingToMatrix ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : movedToMatrix ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <LayoutGrid className="h-3.5 w-3.5" />
+              )}
+              {movedToMatrix ? "Added to Matrix" : "Move to Matrix"}
+            </button>
           )}
-        >
-          {loading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Search className="h-3.5 w-3.5" />
-          )}
-          Ask
-        </button>
+        </div>
       </div>
 
       {error && (
         <p className="mt-4 text-[13px] text-red-400">{error}</p>
+      )}
+
+      {moveError && (
+        <p className="mt-2 text-[13px] text-red-400">{moveError}</p>
       )}
 
       {result && (
