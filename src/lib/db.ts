@@ -115,6 +115,33 @@ export function ensureSchema(): Promise<void> {
         on document_chunks (document_id)
       `;
 
+      // An approximate-nearest-neighbor index on the embedding column
+      // itself — without this, every similarity search (the `<=>`
+      // cosine-distance queries in ask/route.ts, eval.ts, matrix.ts) is
+      // an exact brute-force scan over every chunk with a non-null
+      // embedding. That's fine and in fact exact (no recall loss) at
+      // this project's scale (tens to low hundreds of chunks), but it's
+      // the one piece of this pipeline that doesn't resemble how a real
+      // production vector search is built, so it's worth having for
+      // real rather than leaving unaddressed. HNSW (the modern default
+      // over the older IVFFlat) needs pgvector >= 0.5.0; wrapped in a
+      // try/catch so an older extension version on some Postgres host
+      // degrades to the exact brute-force scan instead of breaking
+      // every request that calls ensureSchema().
+      try {
+        await sql`
+          create index if not exists document_chunks_embedding_hnsw_idx
+          on document_chunks using hnsw (embedding vector_cosine_ops)
+        `;
+      } catch (err) {
+        console.warn(
+          "[db] Couldn't create the HNSW vector index (pgvector may be " +
+            "older than 0.5.0 on this host) — similarity search will " +
+            "still work, just as an exact scan instead of approximate:",
+          err instanceof Error ? err.message : err,
+        );
+      }
+
       // Chunks are now inserted text-first with no embedding yet, and
       // embedded afterwards in small batches (see /api/documents/embed-step)
       // instead of inside the upload request — a single request trying to

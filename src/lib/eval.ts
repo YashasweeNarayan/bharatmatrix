@@ -38,14 +38,29 @@ export async function computeEval(
     const queryEmbedding = await embedText(question);
     const vectorLiteral = JSON.stringify(queryEmbedding);
 
+    // Mirrors /api/ask's retrieval exactly (see the comment there) —
+    // per-document top-N before an overall cap, instead of one global
+    // top-10 that lets a single dominant document crowd out the
+    // others on a question that needs several documents at once.
+    const PER_DOC_LIMIT = 4;
+    const TOTAL_LIMIT = 40;
     const rows = await sql`
-      select dc.document_id, d.filename, dc.page_label, dc.content,
-             dc.embedding <=> ${vectorLiteral}::vector as distance
-      from document_chunks dc
-      join documents d on d.id = dc.document_id
-      where d.status = 'ready' and dc.embedding is not null and d.user_id = ${userId}
+      with ranked as (
+        select dc.document_id, d.filename, dc.page_label, dc.content,
+               dc.embedding <=> ${vectorLiteral}::vector as distance,
+               row_number() over (
+                 partition by dc.document_id
+                 order by dc.embedding <=> ${vectorLiteral}::vector asc
+               ) as rank_in_doc
+        from document_chunks dc
+        join documents d on d.id = dc.document_id
+        where d.status = 'ready' and dc.embedding is not null and d.user_id = ${userId}
+      )
+      select document_id, filename, page_label, content, distance
+      from ranked
+      where rank_in_doc <= ${PER_DOC_LIMIT}
       order by distance asc
-      limit 10
+      limit ${TOTAL_LIMIT}
     `;
 
     if (rows.length === 0) {

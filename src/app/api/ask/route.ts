@@ -59,14 +59,38 @@ export async function POST(req: NextRequest) {
 
   const vectorLiteral = JSON.stringify(queryEmbedding);
 
+  // A single global "top 10 by distance" search lets whichever document
+  // happens to word-match the question most closely crowd out every
+  // other document's chunks entirely — exactly the failure mode a
+  // question needing evidence from several documents at once (e.g.
+  // cross-checking one company's numbers across three of its own
+  // filings) runs into: the two chunks that would have answered the
+  // other half of the question never make it into context, and the
+  // model (correctly) says it can't find them. Partitioning by
+  // document_id and taking each document's own top matches first
+  // guarantees every ready document gets a fair shot at contributing
+  // its most relevant chunk(s) before the overall cap is applied, so a
+  // multi-document question doesn't lose evidence to a single
+  // dominant document.
+  const PER_DOC_LIMIT = 4;
+  const TOTAL_LIMIT = 40;
   const rows = await sql`
-    select dc.document_id, d.filename, dc.page_label, dc.content,
-           dc.embedding <=> ${vectorLiteral}::vector as distance
-    from document_chunks dc
-    join documents d on d.id = dc.document_id
-    where d.status = 'ready' and dc.embedding is not null and d.user_id = ${user.id}
+    with ranked as (
+      select dc.document_id, d.filename, dc.page_label, dc.content,
+             dc.embedding <=> ${vectorLiteral}::vector as distance,
+             row_number() over (
+               partition by dc.document_id
+               order by dc.embedding <=> ${vectorLiteral}::vector asc
+             ) as rank_in_doc
+      from document_chunks dc
+      join documents d on d.id = dc.document_id
+      where d.status = 'ready' and dc.embedding is not null and d.user_id = ${user.id}
+    )
+    select document_id, filename, page_label, content, distance
+    from ranked
+    where rank_in_doc <= ${PER_DOC_LIMIT}
     order by distance asc
-    limit 10
+    limit ${TOTAL_LIMIT}
   `;
 
   if (rows.length === 0) {
