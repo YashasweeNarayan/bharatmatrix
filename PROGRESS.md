@@ -764,3 +764,23 @@ disk here, and will be pushed in one go once the connection is live.
   account (nothing will match `user_id = you`). Sign up, then
   re-upload the same PDF set and re-add the eval questions (Evaluate →
   Seed) under the new account.
+- **2026-11-13 (build break from the accounts change: wrong pdfjs-dist
+  entry point)** — The accounts commit above broke the actual Vercel
+  build (`Module not found: Can't resolve
+  'pdfjs-dist/legacy/build/pdf.js'`), caught from the build log
+  Muawiyah pasted, not from local testing — this specific mistake was
+  mine: the local verification done when pdfjs-dist first replaced
+  pdf-parse (2026-11-07 entry above) ran against whatever pdfjs-dist
+  version happened to be installed on this machine for testing
+  (6.2.108), which has a completely different package layout — no
+  `legacy/` build, no `exports` map at all — than the version actually
+  pinned in package.json (4.9.155). The `.js` legacy entry point was
+  never real for 4.9.155; only `pdf.mjs` is. Fixed: `extract.ts` and
+  `declarations.d.ts` now import `pdfjs-dist/legacy/build/pdf.mjs`
+  instead — a plain `import` statement (not `require()`) handles a
+  `.mjs` file fine through Next's webpack bundler, so this isn't a
+  workaround, it's the actually-correct path. Also fixed a config
+  warning from the same build log: `outputFileTracingIncludes` was set
+  at the top level of `next.config.mjs`, which Next 14.2.18 doesn't
+  recognize there (it's under `experimental` until Next 15) — moved
+  it. Syntax-checked clean, pushed (`3c55c2f`).
