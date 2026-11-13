@@ -10,8 +10,14 @@ const nextConfig = {
   // the 14 standard fonts (Helvetica, Times, etc.) instead of failing
   // loudly, so this is worth declaring explicitly rather than debugging
   // a subtle text-extraction quality issue later.
-  outputFileTracingIncludes: {
-    "/api/documents": ["node_modules/pdfjs-dist/standard_fonts/**"],
+  // On Next 14.2.18 this option only exists under `experimental` — it
+  // wasn't stabilized to the top level until Next 15. Vercel's build
+  // log flagged the top-level version as an unrecognized key (silently
+  // ignored, not a build failure on its own) before this fix.
+  experimental: {
+    outputFileTracingIncludes: {
+      "/api/documents": ["node_modules/pdfjs-dist/standard_fonts/**"],
+    },
   },
 };
 

@@ -4,7 +4,7 @@
 // declarations keep the build from failing on missing/mismatched types;
 // the actual shapes we rely on are narrowed with local types in
 // src/lib/extract.ts.
-declare module "pdfjs-dist/legacy/build/pdf.js";
+declare module "pdfjs-dist/legacy/build/pdf.mjs";
 declare module "mammoth";
 // bcryptjs's bundled types have been inconsistent across versions with
 // this project's moduleResolution setting; declaring it loosely here

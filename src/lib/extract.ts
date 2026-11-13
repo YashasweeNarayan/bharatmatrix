@@ -13,8 +13,15 @@ import path from "path";
 // So this now depends on pdfjs-dist directly — the actively maintained,
 // official PDF.js package — instead of pdf-parse's frozen 2018-era copy
 // of it. The "legacy/build" entry point is pdfjs-dist's own
-// Node-compatible (no DOM/canvas) build.
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
+// Node-compatible (no DOM/canvas) build. Deployed build failed resolving
+// the ".js" variant ("Module not found: Can't resolve
+// 'pdfjs-dist/legacy/build/pdf.js'") — pdfjs-dist 4.9.155 only ships
+// this build as ESM (".mjs"), there's no separate CJS ".js" file at
+// this path to resolve. Next's webpack bundler handles an ESM import
+// of a .mjs file fine via a plain `import` statement (unlike a
+// require() call, which is what the old wording here assumed), so
+// switching the extension is the actual fix, not a workaround.
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 export type ExtractedPage = {
   ordinal: number;
