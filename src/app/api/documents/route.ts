@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { randomUUID } from "crypto";
 import { sql, ensureSchema } from "@/lib/db";
-import { extractDocument } from "@/lib/extract";
-import { chunkPages } from "@/lib/chunk";
+import { indexDocument } from "@/lib/indexDocument";
 import { requireUser, UnauthorizedError } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -111,55 +110,14 @@ export async function POST(req: NextRequest) {
     returning id
   `;
 
-  try {
-    const { pages } = await extractDocument(
-      buffer,
-      file.type || "",
-      file.name,
-    );
+  await indexDocument(doc.id as string, buffer, file.type || "", file.name);
 
-    await sql.begin(async (tx) => {
-      for (const page of pages) {
-        await tx`
-          insert into document_pages (document_id, ordinal, page_label, content)
-          values (${doc.id}, ${page.ordinal}, ${page.label}, ${page.content})
-        `;
-      }
-    });
-
-    // Chunk now, but deliberately do NOT embed here (Step 3 used to). A
-    // single request trying to embed every chunk of a 100+ page document
-    // at once both risked the platform's request-duration limit and could
-    // burst past Gemini's per-minute embedding rate limit on its own.
-    // Chunks are inserted with no vector yet, status goes to 'embedding',
-    // and /api/documents/embed-step embeds a small batch at a time,
-    // driven by the client the same way Matrix cells are.
-    const chunks = chunkPages(
-      pages.map((p) => ({ label: p.label, content: p.content })),
-    );
-
-    await sql.begin(async (tx) => {
-      for (const chunk of chunks) {
-        await tx`
-          insert into document_chunks (document_id, ordinal, page_label, content)
-          values (${doc.id}, ${chunk.ordinal}, ${chunk.pageLabel}, ${chunk.content})
-        `;
-      }
-      await tx`
-        update documents
-        set status = ${chunks.length > 0 ? "embedding" : "ready"},
-            page_count = ${pages.length}
-        where id = ${doc.id}
-      `;
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    await sql`
-      update documents set status = 'failed', error = ${message}
-      where id = ${doc.id}
-    `;
+  const [result] = await sql`
+    select status, error from documents where id = ${doc.id}
+  `;
+  if (result.status === "failed") {
     return NextResponse.json(
-      { error: message, documentId: doc.id },
+      { error: result.error, documentId: doc.id },
       { status: 207 },
     );
   }
