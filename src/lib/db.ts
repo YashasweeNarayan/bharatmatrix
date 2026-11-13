@@ -115,6 +115,39 @@ export function ensureSchema(): Promise<void> {
         on document_chunks (document_id)
       `;
 
+      // Lexical/keyword half of hybrid retrieval. A generated column
+      // (Postgres keeps it in sync automatically, no app-side writes
+      // needed) holding the tsvector for full-text search, plus a GIN
+      // index on it — this is what websearch_to_tsquery/ts_rank_cd in
+      // retrieve.ts searches against. Worth being honest about what
+      // this is NOT: Postgres's ts_rank_cd is a TF-based rank, not a
+      // literal BM25 implementation (no document-length normalization
+      // term, no IDF tuned the BM25 way) — it plays the same role in
+      // this pipeline (exact keyword/term matching, which embeddings
+      // are bad at — exact figures, tickers, defined terms, acronyms)
+      // but isn't the same formula a real BM25 engine like
+      // Elasticsearch would use. Added defensively in case this column
+      // doesn't exist yet on an already-provisioned document_chunks
+      // table (generated columns can't be added with a plain ALTER in
+      // every Postgres version, so this is wrapped too).
+      try {
+        await sql`
+          alter table document_chunks
+          add column if not exists content_tsv tsvector
+          generated always as (to_tsvector('english', content)) stored
+        `;
+        await sql`
+          create index if not exists document_chunks_content_tsv_idx
+          on document_chunks using gin (content_tsv)
+        `;
+      } catch (err) {
+        console.warn(
+          "[db] Couldn't add the full-text search column/index — " +
+            "keyword search will fall back to a plain ILIKE scan:",
+          err instanceof Error ? err.message : err,
+        );
+      }
+
       // An approximate-nearest-neighbor index on the embedding column
       // itself — without this, every similarity search (the `<=>`
       // cosine-distance queries in ask/route.ts, eval.ts, matrix.ts) is

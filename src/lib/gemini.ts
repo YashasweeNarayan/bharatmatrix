@@ -279,6 +279,108 @@ export async function answerFromContext(
   return JSON.parse(text) as AnswerResult;
 }
 
+const RERANK_SCHEMA = {
+  type: "object",
+  properties: {
+    rankedIndexes: {
+      type: "array",
+      description:
+        "The candidate numbers (the [n] labels, not array positions), " +
+        "reordered from MOST to LEAST relevant to the question. Include " +
+        "every candidate number exactly once — don't drop any, don't " +
+        "invent new ones.",
+      items: { type: "integer" },
+    },
+  },
+  required: ["rankedIndexes"],
+};
+
+/**
+ * The reranker second pass. Hybrid retrieval's dense+keyword merge
+ * (see retrieve.ts) is good at finding a wide net of plausible
+ * candidates cheaply, but the fusion score (RRF) only looks at each
+ * candidate's RANK in each list, never its actual relevance to this
+ * specific question — so it can't tell "mentions the right company
+ * but the wrong fact" apart from "actually answers this". A reranker
+ * reads the real question against each candidate's real text and
+ * reorders by relevance.
+ *
+ * Worth being explicit about what this is standing in for: Hebbia and
+ * similar production systems typically use a dedicated cross-encoder
+ * model (e.g. something in the ms-marco-MiniLM family) or a hosted
+ * rerank endpoint — a small model trained specifically to score
+ * (question, passage) pairs, cheap enough to run over 40-80
+ * candidates in milliseconds. This project doesn't have a cross-
+ * encoder model or a rerank API wired up, so it reuses the existing
+ * Gemini chat model as an LLM-based reranker instead — same idea
+ * (read the question and the candidate together, score relevance),
+ * much heavier per call, and sharing the same request quota as every
+ * other Gemini call in this pipeline. That's a real trade-off, not a
+ * cosmetic one; it's called out to the user rather than papered over.
+ *
+ * Fails soft: if the rerank call errors (rate limit, bad JSON,
+ * whatever), the caller keeps the RRF-fused order instead of losing
+ * the question entirely.
+ */
+export async function rerankChunks<T extends { content: string }>(
+  question: string,
+  candidates: T[],
+  keep: number,
+): Promise<T[]> {
+  if (candidates.length <= keep) return candidates;
+
+  const candidateBlock = candidates
+    .map((c, i) => `[${i + 1}] ${c.content}`)
+    .join("\n\n---\n\n");
+
+  const systemInstruction =
+    "You are a reranker for a document search system. You're given a " +
+    "question and a numbered list of candidate text passages retrieved " +
+    "by an upstream search step. Reorder the candidate numbers from " +
+    "most to least relevant to actually answering the question — " +
+    "favor passages that contain a direct, specific answer (the right " +
+    "number, date, name, or fact) over ones that merely share " +
+    "vocabulary or topic with the question.";
+
+  const response = await withRetry<
+    Awaited<ReturnType<typeof client.models.generateContent>>
+  >(
+    () =>
+      client.models.generateContent({
+        model: CHAT_MODEL,
+        contents: `Question: ${question}\n\nCandidates:\n\n${candidateBlock}`,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: RERANK_SCHEMA,
+        },
+      }),
+    "generateContent (rerank)",
+  );
+
+  const text = response.text;
+  if (!text) throw new Error("Rerank response had no text output.");
+
+  const parsed = JSON.parse(text) as { rankedIndexes: number[] };
+  const seen = new Set<number>();
+  const ordered: T[] = [];
+
+  for (const n of parsed.rankedIndexes) {
+    const idx = n - 1;
+    if (idx < 0 || idx >= candidates.length || seen.has(idx)) continue;
+    seen.add(idx);
+    ordered.push(candidates[idx]);
+  }
+  // Any candidate the model's list missed still gets appended (in its
+  // original order) rather than silently dropped, so a malformed or
+  // partial list never loses content outright.
+  for (let i = 0; i < candidates.length; i++) {
+    if (!seen.has(i)) ordered.push(candidates[i]);
+  }
+
+  return ordered.slice(0, keep);
+}
+
 export type ContradictionResult = {
   hasContradiction: boolean;
   explanation: string;

@@ -1,6 +1,7 @@
 import { sql } from "@/lib/db";
 import { embedText, answerFromContext, judgeAnswer, isRateLimitError } from "@/lib/gemini";
 import { verifyGrounding } from "@/lib/verify";
+import { hybridRetrieve } from "@/lib/retrieve";
 
 /**
  * Runs one eval question through the exact same pipeline /api/ask uses —
@@ -36,34 +37,12 @@ export async function computeEval(
     }
 
     const queryEmbedding = await embedText(question);
-    const vectorLiteral = JSON.stringify(queryEmbedding);
 
-    // Mirrors /api/ask's retrieval exactly (see the comment there) —
-    // per-document top-N before an overall cap, instead of one global
-    // top-10 that lets a single dominant document crowd out the
-    // others on a question that needs several documents at once.
-    const PER_DOC_LIMIT = 4;
-    const TOTAL_LIMIT = 40;
-    const rows = await sql`
-      with ranked as (
-        select dc.document_id, d.filename, dc.page_label, dc.content,
-               dc.embedding <=> ${vectorLiteral}::vector as distance,
-               row_number() over (
-                 partition by dc.document_id
-                 order by dc.embedding <=> ${vectorLiteral}::vector asc
-               ) as rank_in_doc
-        from document_chunks dc
-        join documents d on d.id = dc.document_id
-        where d.status = 'ready' and dc.embedding is not null and d.user_id = ${userId}
-      )
-      select document_id, filename, page_label, content, distance
-      from ranked
-      where rank_in_doc <= ${PER_DOC_LIMIT}
-      order by distance asc
-      limit ${TOTAL_LIMIT}
-    `;
+    // Mirrors /api/ask's retrieval exactly (see lib/retrieve.ts) —
+    // hybrid dense+keyword search fused by RRF, then reranked.
+    const context = await hybridRetrieve(question, queryEmbedding, userId);
 
-    if (rows.length === 0) {
+    if (context.length === 0) {
       await sql`
         update eval_results
         set status = 'done', actual_answer = ${"Nothing indexed yet."},
@@ -74,13 +53,6 @@ export async function computeEval(
       `;
       return;
     }
-
-    const context = rows.map((r) => ({
-      documentId: r.document_id as string,
-      filename: r.filename as string,
-      pageLabel: r.page_label as string,
-      content: r.content as string,
-    }));
 
     const analystResult = await answerFromContext(question, context);
     const verified = verifyGrounding(analystResult, context);
