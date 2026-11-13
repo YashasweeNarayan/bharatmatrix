@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Workspace from "@/components/Workspace";
+import AppShell from "@/components/AppShell";
 import { ensureSchema } from "@/lib/db";
 import { SESSION_COOKIE, getUserByToken } from "@/lib/auth";
 
@@ -17,8 +18,8 @@ export default async function WorkspacePage() {
   }
 
   return (
-    <main className="bg-grain min-h-screen bg-ink-950">
-      <Workspace userEmail={user.email} />
-    </main>
+    <AppShell email={user.email}>
+      <Workspace />
+    </AppShell>
   );
 }

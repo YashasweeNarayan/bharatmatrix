@@ -58,7 +58,7 @@ export default function AskPanel({
   }
 
   return (
-    <div className="mt-12 border-t border-ink-700 pt-10">
+    <div>
       <h2 className="text-[15px] font-semibold text-neutral-100">
         Ask a question
       </h2>
@@ -67,26 +67,30 @@ export default function AskPanel({
         with the exact passage it came from.
       </p>
 
-      <div className="mt-4 flex gap-2">
-        <input
+      <div className="mt-4 flex flex-col gap-2">
+        <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") ask();
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              ask();
+            }
           }}
           disabled={disabled}
+          rows={2}
           placeholder={
             readyCount === 0
               ? "Upload a document first…"
               : "e.g. What was the revenue in 2025?"
           }
-          className="flex-1 rounded-lg border border-ink-700 bg-ink-900/60 px-3.5 py-2.5 text-[13px] text-neutral-200 placeholder:text-neutral-600 focus:border-saffron-500"
+          className="w-full resize-none rounded-lg border border-ink-700 bg-ink-900/60 px-3.5 py-2.5 text-[13px] text-neutral-200 placeholder:text-neutral-600 focus:border-saffron-500"
         />
         <button
           onClick={ask}
           disabled={disabled || !question.trim()}
           className={clsx(
-            "flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
+            "flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
             disabled || !question.trim()
               ? "cursor-not-allowed bg-ink-800 text-neutral-600"
               : "bg-saffron-500 text-ink-950 hover:bg-saffron-400",
