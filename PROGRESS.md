@@ -827,3 +827,29 @@ disk here, and will be pushed in one go once the connection is live.
   `outputFileTracingIncludes` got a matching entry for
   `pdfjs-dist/legacy/build/pdf.worker.mjs` so the actual file ships
   with the function. Syntax-checked clean, pushed (`5cb1eae`).
+- **2026-11-13 (upload fix #3: retry silently skipped extraction
+  entirely)** — Reported symptom: all 10 documents showed status
+  "ready" (no error, `page_count: null`) but Ask said "Nothing indexed
+  yet." These were the same 10 documents that had failed on the
+  pdf.worker.mjs bug fixed in the previous entry — they'd failed
+  *during extraction itself*, before chunking ever ran, so
+  `document_chunks` had zero rows for them. The retry endpoint (PATCH
+  `/api/documents/[id]`) only ever asked "how many chunks still need
+  an embedding" to decide 'embedding' vs 'ready'. With zero chunks
+  total, that count is trivially zero, so it married these straight to
+  'ready' and cleared the error, without ever re-running extraction or
+  setting `page_count`. The status looked completely fine; there was
+  just never anything indexed behind it — a genuinely different bug
+  from the worker-path one, just surfacing through the same retry
+  click. Fixed by distinguishing the two cases that were being
+  conflated: chunks exist with some still unembedded -> resume
+  embedding (unchanged); zero chunks exist at all -> extraction never
+  completed, so re-fetch the file from its stored blob and re-run the
+  full extract/chunk pipeline from scratch. Pulled the shared extract-
+  chunk-and-set-status logic out into `lib/indexDocument.ts`, used by
+  both the initial upload and this retry path now, so they can't drift
+  apart again. The 10 documents already sitting in the broken state
+  won't fix themselves retroactively (status is 'ready', not 'failed',
+  so the UI doesn't even show a retry button for them) — Muawiyah
+  needs to delete and re-upload them once this deploys. Syntax-checked
+  clean, pushed (`3546406`).
