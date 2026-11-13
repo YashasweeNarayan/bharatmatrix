@@ -44,6 +44,26 @@ const STANDARD_FONT_DATA_URL =
   path.join(process.cwd(), "node_modules", "pdfjs-dist", "standard_fonts") +
   path.sep;
 
+// pdf.js always routes parsing through its "worker" API, even in Node —
+// when GlobalWorkerOptions.workerSrc isn't set, it falls back to a
+// "fake worker" that still needs to dynamically import the real
+// pdf.worker.mjs module (it just runs it in-process instead of a real
+// worker thread). Left unset, it guessed a path next to the bundled
+// route.js itself ("Cannot find module
+// '.../app/api/documents/pdf.worker.mjs'") — that file was never there;
+// pointing it at the actual on-disk location (same process.cwd() +
+// node_modules pattern as the font path above, and bundled in via the
+// matching outputFileTracingIncludes entry in next.config.mjs) is what
+// lets the fake worker actually find and load it.
+pdfjsLib.GlobalWorkerOptions.workerSrc = path.join(
+  process.cwd(),
+  "node_modules",
+  "pdfjs-dist",
+  "legacy",
+  "build",
+  "pdf.worker.mjs",
+);
+
 /**
  * Pulls text out of a PDF, DOCX or XLSX buffer, split into "pages" — an
  * actual page for PDFs, the whole document for DOCX (Word has no fixed

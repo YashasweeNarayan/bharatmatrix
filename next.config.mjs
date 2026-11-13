@@ -14,9 +14,16 @@ const nextConfig = {
   // wasn't stabilized to the top level until Next 15. Vercel's build
   // log flagged the top-level version as an unrecognized key (silently
   // ignored, not a build failure on its own) before this fix.
+  // Same reasoning for pdf.worker.mjs: pdf.js loads it via a path built
+  // at runtime (see extract.ts's GlobalWorkerOptions.workerSrc), so the
+  // tracer needs telling explicitly or the deployed function simply
+  // won't have the file ("Cannot find module '.../pdf.worker.mjs'").
   experimental: {
     outputFileTracingIncludes: {
-      "/api/documents": ["node_modules/pdfjs-dist/standard_fonts/**"],
+      "/api/documents": [
+        "node_modules/pdfjs-dist/standard_fonts/**",
+        "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+      ],
     },
   },
 };
