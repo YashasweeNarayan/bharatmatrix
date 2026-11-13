@@ -784,3 +784,26 @@ disk here, and will be pushed in one go once the connection is live.
   at the top level of `next.config.mjs`, which Next 14.2.18 doesn't
   recognize there (it's under `experimental` until Next 15) — moved
   it. Syntax-checked clean, pushed (`3c55c2f`).
+- **2026-11-13 (logged-in UI redesign)** — Requested: a better, "full
+  area," production-level layout for the logged-in experience.
+  Workspace was a single max-w-4xl column with the dropzone, document
+  list and Ask panel all stacked vertically, and both `/workspace` and
+  `/matrix` hand-rolled their own near-duplicate header (logo/nav/
+  email/logout). New `AppShell.tsx` is a shared, persistent top bar —
+  logo, Workspace/Matrix nav with an active-page indicator, account
+  email, logout — used by both pages instead of each re-implementing
+  it, over a 1400px-wide content container (full-bleed header, no more
+  cramped column). Workspace itself is now a full-width two-column
+  layout: a stat strip at the top (documents / ready / indexing /
+  failed counts, so the state of your library is visible at a glance
+  instead of only inferable from scrolling the list), the document
+  list as its own card on the left, and the Ask panel as a sticky card
+  alongside it on wide screens — previously it was buried below
+  whatever the document list's current length happened to be. Document
+  rows show relative upload time now ("3m ago"); the dropzone shrinks
+  to a slim bar once documents exist instead of staying a large empty
+  box competing with real content. AskPanel switched from a
+  side-by-side input+button (needs width) to a stacked textarea+button
+  (fits the ~380px sidebar column it now lives in). Matrix page now
+  renders inside the same AppShell. Syntax-checked clean, pushed
+  (`852ac7d`).
