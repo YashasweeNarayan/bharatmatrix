@@ -693,3 +693,74 @@ disk here, and will be pushed in one go once the connection is live.
   rows and re-upload the same PDF set once this deploys — if this really
   is the root cause, all 10 should go to "ready" this time, no zip
   needed.
+- **2026-11-13 (accounts + per-user data isolation)** — Requested:
+  real login/sign-up, "production level," each user's own data private
+  to their own account. Before this everything in the app — documents,
+  questions, matrix cells, contradictions, eval results — was global:
+  no login at all, so anyone hitting the site saw and could act on
+  everyone else's data. Not a new RAG pipeline (the existing pgvector
+  search already does that job); what was missing was an owner on
+  every row and a login system to establish one.
+
+  Added: `users` (bcrypt-hashed passwords, 12 rounds) and `sessions`
+  tables; a random 32-byte session token handed to the browser as an
+  httpOnly, secure (in production), sameSite=lax cookie —
+  `lib/auth.ts`'s `getSessionUser`/`requireUser` resolve it on every
+  API request, `getUserByToken` does the same for server components
+  via `next/headers` cookies(). `/api/auth/signup`, `/login`,
+  `/logout`, `/me`. Login failures return the same "Incorrect email or
+  password" whether the email doesn't exist or the password is wrong —
+  deliberate, so a failed attempt doesn't tell an attacker which half
+  they got right. `/login` and `/signup` pages (`AuthForm.tsx`); the
+  home page header now shows Log in/Sign up when logged out, or the
+  account's email + a logout button when logged in
+  (`HeaderAuthControls.tsx`); `/workspace` and `/matrix` are server
+  components that redirect to `/login?next=...` if there's no valid
+  session.
+
+  Schema: `documents`, `questions` and `eval_questions` each got a
+  nullable `user_id` column (additive — nothing deleted; see the note
+  below on what this does to the existing test documents).
+  `document_pages`/`document_chunks`, `matrix_cells`,
+  `question_contradictions` and `eval_results` have no `user_id` of
+  their own — they're scoped by joining back to the `documents`/
+  `questions` row that owns them, same pattern used everywhere else in
+  this codebase already.
+
+  Every route touching the database now requires a session and
+  filters by it — including ones that needed real auditing, not just
+  a `where user_id = ...` tacked on:
+  - `/api/matrix/step`, `/api/contradictions/step`, `/api/eval/step`
+    (the one-cell/one-question-at-a-time drain loops) previously
+    picked the globally oldest pending item across *every* user —
+    fixed to only ever pick up the signed-in user's own pending work.
+  - `/api/matrix/backfill`'s `cross join questions` was previously
+    completely unscoped — it could insert a matrix cell pairing one
+    user's document with a different user's question. Both sides of
+    the join are now filtered to the same `user_id`.
+  - `/api/matrix/recompute` takes a `documentId`/`questionId` straight
+    from the request body — added an explicit ownership check on both
+    before calling `computeCell`, so a crafted request can't force a
+    recompute against another user's data.
+  - `/api/documents/reembed` (the manual OpenRouter-vectors cleanup
+    tool from the 2026-11-06 entry) was a blunt global reset — scoped
+    to the caller's own documents only, since it's still reachable by
+    any logged-in user.
+
+  `computeCell` (matrix.ts) and `computeContradiction`
+  (contradiction.ts) needed no changes themselves — both only ever
+  operate on a single already-verified `document_id`/`question_id`
+  pair, and matrix_cells rows are only ever created pairing a
+  document and question that already belong to the same user (now
+  enforced at both insertion points: `/api/questions` and
+  `/api/matrix/backfill`). `computeEval` (eval.ts) did need a
+  `userId` parameter added, since it runs its own cross-document
+  vector search the same way `/api/ask` does.
+
+  Syntax-checked clean across all ~30 touched/added files, pushed
+  (`2d706c6`). **Note for Muawiyah**: the finance test documents and
+  questions uploaded before this change have no owner — they're not
+  deleted, but once this deploys they'll be invisible under any
+  account (nothing will match `user_id = you`). Sign up, then
+  re-upload the same PDF set and re-add the eval questions (Evaluate →
+  Seed) under the new account.
