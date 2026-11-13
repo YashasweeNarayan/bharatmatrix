@@ -853,3 +853,33 @@ disk here, and will be pushed in one go once the connection is live.
   so the UI doesn't even show a retry button for them) — Muawiyah
   needs to delete and re-upload them once this deploys. Syntax-checked
   clean, pushed (`3546406`).
+- **2026-11-13 (cross-document retrieval fix + real ANN index)** —
+  Everything finally indexed cleanly, then a deliberately tricky test
+  question (one needing evidence from three of Orion's own filings at
+  once — Q3 earnings release, FY results release, shareholder letter)
+  came back "not found" on two sub-claims that were genuinely present
+  in the documents. Root cause: `/api/ask` and `lib/eval.ts` both did
+  one global "top 10 by cosine distance across every chunk from every
+  ready document" search. With several unrelated companies' chunks all
+  competing for the same 10 slots, whichever document happens to
+  word-match the question most closely crowds out every other
+  document's chunks entirely — a multi-document question silently
+  loses the other evidence before it ever reaches the Analyst. The
+  "not found" was an honest answer to an incomplete context, not a
+  reasoning bug. Fixed by partitioning retrieval by `document_id` (a
+  `row_number() over (partition by document_id order by distance)`
+  window) and taking each ready document's own top 4 chunks before an
+  overall cap of 40, instead of one undifferentiated global top-10 —
+  every document now gets a fair shot at contributing its most
+  relevant evidence. Applied identically to `/api/ask` and
+  `lib/eval.ts` (which deliberately mirrors ask's retrieval).
+
+  Separately, in the course of explaining the project's indexing
+  approach: there was no index at all on `document_chunks.embedding` —
+  every similarity search was an exact brute-force scan over every
+  chunk, correct but not how real production vector search is built.
+  Added an HNSW approximate-nearest-neighbor index
+  (`vector_cosine_ops`) on that column, wrapped in a try/catch since it
+  needs pgvector >= 0.5.0 — an older extension version on some Postgres
+  host degrades to the exact scan instead of breaking every request
+  through `ensureSchema()`. Syntax-checked clean, pushed (`1c38aff`).
