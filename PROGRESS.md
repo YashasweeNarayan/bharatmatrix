@@ -807,3 +807,23 @@ disk here, and will be pushed in one go once the connection is live.
   (fits the ~380px sidebar column it now lives in). Matrix page now
   renders inside the same AppShell. Syntax-checked clean, pushed
   (`852ac7d`).
+- **2026-11-13 (upload fix #2: pdf.js's worker file wasn't bundled)** —
+  With the .mjs build-break fix deployed, uploads now failed
+  deterministically on all 10/10 files (progress — no longer the old
+  intermittent pattern) with: `Setting up fake worker failed: "Cannot
+  find module '/var/task/.next/server/app/api/documents/pdf.worker.mjs'
+  imported from .../route.js"`. pdf.js always routes parsing through
+  its worker API, even in Node — with `GlobalWorkerOptions.workerSrc`
+  unset, it falls back to a "fake worker" that still dynamically
+  imports the real `pdf.worker.mjs` to run in-process, and it guessed a
+  path sitting right next to the bundled route.js, which was never
+  there. Exact same shape of problem as the `standard_fonts` path fixed
+  in an earlier entry — pdf.js builds this path at runtime, so Vercel's
+  file tracer can't discover the dependency from static analysis alone.
+  Fixed the same way: `extract.ts` now explicitly sets
+  `GlobalWorkerOptions.workerSrc` to the real on-disk location
+  (`process.cwd()` + the known node_modules layout, same pattern as
+  `STANDARD_FONT_DATA_URL`), and `next.config.mjs`'s
+  `outputFileTracingIncludes` got a matching entry for
+  `pdfjs-dist/legacy/build/pdf.worker.mjs` so the actual file ships
+  with the function. Syntax-checked clean, pushed (`5cb1eae`).
