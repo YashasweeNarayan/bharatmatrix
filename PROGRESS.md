@@ -923,3 +923,16 @@ disk here, and will be pushed in one go once the connection is live.
   existing Gemini chat model standing in for a dedicated small
   cross-encoder model, which is heavier per call and shares the same
   request quota as every other Gemini call in the pipeline.
+
+- **2026-11-13 (Move to Matrix button)** — Ask and Matrix were fully
+  decoupled (as explained to the user when they asked why their Ask
+  question wasn't showing up in the Matrix grid) — Ask is a one-off
+  Q&A with no persistence, Matrix only tracks questions explicitly
+  added through its own "add question" input. Added an explicit
+  bridge instead of auto-linking them: once an Ask question gets
+  answered, a "Move to Matrix" button appears beside the Ask button.
+  Clicking it calls the same `/api/questions` POST the Matrix page's
+  input already uses (inserts the question row, seeds `matrix_cells`
+  for every ready document) — so it's the user's deliberate choice,
+  not automatic, and the Ask panel stays simple by default. Pushed
+  (`1accac1`).
