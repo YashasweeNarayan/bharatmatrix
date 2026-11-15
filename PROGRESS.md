@@ -936,3 +936,42 @@ disk here, and will be pushed in one go once the connection is live.
   for every ready document) — so it's the user's deliberate choice,
   not automatic, and the Ask panel stays simple by default. Pushed
   (`1accac1`).
+
+- **2026-11-15 (Telegram bot: QR-linked question answering)** —
+  Added a new channel for asking BharatMatrix questions: Telegram.
+  Requested by the user with a specific linking UX in mind — a
+  personalized QR code in the user's own logged-in workspace that
+  regenerates every time it's opened, but always resolves to the same
+  linked account.
+
+  How it works end to end:
+  1. `telegram_link_codes` table — a short-lived (10 min), single-use
+     code minted by an authenticated web request (`/api/telegram/
+     link-code` POST), the only moment the system knows for certain
+     which BharatMatrix user is doing the linking, since Telegram's
+     webhook carries no session cookie at all.
+  2. `TelegramConnect.tsx` renders that code as a QR code (deep link
+     `https://t.me/<bot>?start=<code>`, via `react-qr-code`) in the
+     Workspace sidebar. Scanning it opens Telegram with `/start
+     <code>` pre-filled. The card auto-mints a new code when the old
+     one expires, so it's never showing a dead QR.
+  3. `telegram_links` table — `chat_id -> user_id`, upserted (not
+     inserted) on every `/start`, which is what gives the "changes
+     every time you open it, same account either way" behavior: a new
+     code is a new one-time key, but it always unlocks the same
+     account for that logged-in user.
+  4. The webhook route (`/api/telegram/webhook`) verifies a shared
+     secret Telegram echoes back on every call, looks up the asking
+     chat's linked `user_id`, then runs the exact same pipeline as
+     `/api/ask` — `embedText` → `hybridRetrieve` (dense + keyword +
+     RRF + rerank, from the 2026-11-13 entry) → Analyst →
+     deterministic Verifier — and replies with the grounded answer
+     plus citations as plain text (deliberately not Telegram's
+     MarkdownV2, since its escaping rules would break on ordinary
+     punctuation in a real answer).
+
+  Needs `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, and
+  `TELEGRAM_WEBHOOK_SECRET` set in Vercel plus a one-time `setWebhook`
+  call against Telegram's API before it's live — not yet configured on
+  this deployment, so the connect card currently falls back to showing
+  the raw code. Syntax-checked clean, pushed (`6da503a`).
