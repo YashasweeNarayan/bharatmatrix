@@ -279,6 +279,35 @@ export function ensureSchema(): Promise<void> {
           updated_at timestamptz not null default now()
         )
       `;
+
+      // Telegram bot. Two tables: a short-lived one-time code (minted by
+      // the authenticated web app, where we know which user is asking)
+      // that the bot exchanges for a permanent chat_id -> user_id link
+      // the first time that Telegram chat sends /start <code>. The
+      // webhook request itself carries no BharatMatrix session cookie —
+      // Telegram has no concept of one — so this linking step is the
+      // only way the bot ever finds out which user's documents a given
+      // chat is allowed to search.
+      await sql`
+        create table if not exists telegram_link_codes (
+          code text primary key,
+          user_id uuid not null references users(id) on delete cascade,
+          created_at timestamptz not null default now(),
+          expires_at timestamptz not null
+        )
+      `;
+
+      await sql`
+        create table if not exists telegram_links (
+          chat_id text primary key,
+          user_id uuid not null references users(id) on delete cascade,
+          created_at timestamptz not null default now()
+        )
+      `;
+      await sql`
+        create index if not exists telegram_links_user_id_idx
+        on telegram_links (user_id)
+      `;
     })();
   }
   return schemaReady;

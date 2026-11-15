@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { FileText, Loader2, RotateCcw, Upload, X } from "lucide-react";
 import AskPanel from "@/components/AskPanel";
+import TelegramConnect from "@/components/TelegramConnect";
 
 type DocumentStatus = "processing" | "embedding" | "ready" | "failed";
 
@@ -450,14 +451,17 @@ export default function Workspace() {
           </div>
         </div>
 
-        {/* Ask — sticky alongside the document list on wide screens */}
-        <div className="rounded-2xl border border-ink-700 bg-ink-900/40 p-5 lg:sticky lg:top-[88px]">
-          <AskPanel
-            readyCount={readyCount}
-            filenameById={Object.fromEntries(
-              docs.map((d) => [d.id, d.filename]),
-            )}
-          />
+        {/* Ask + Telegram — sticky alongside the document list on wide screens */}
+        <div className="flex flex-col gap-6 lg:sticky lg:top-[88px]">
+          <div className="rounded-2xl border border-ink-700 bg-ink-900/40 p-5">
+            <AskPanel
+              readyCount={readyCount}
+              filenameById={Object.fromEntries(
+                docs.map((d) => [d.id, d.filename]),
+              )}
+            />
+          </div>
+          <TelegramConnect />
         </div>
       </div>
     </div>
