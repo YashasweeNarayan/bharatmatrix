@@ -975,3 +975,41 @@ disk here, and will be pushed in one go once the connection is live.
   call against Telegram's API before it's live — not yet configured on
   this deployment, so the connect card currently falls back to showing
   the raw code. Syntax-checked clean, pushed (`6da503a`).
+
+- **2026-11-18 (Evaluation wired in + growable ground truth; hybrid
+  retrieval extended to Matrix)** — Two things fixed/extended after
+  reviewing what was actually left.
+
+  **Evaluation was never reachable from the UI.** `EvaluationPanel.tsx`
+  and its API routes existed and worked, but nothing rendered the
+  panel — no button, no page. Added `/evaluation` as a real page
+  (new nav item in `AppShell`) with `EvaluationHost.tsx`, a thin
+  client wrapper that gives the panel's close button somewhere to go.
+
+  **Ground truth was a fixed, hardcoded 10-question seed set**, with
+  no way to add your own cases short of editing code. Decided against
+  a file-upload feature (wrong shape for a dataset you add to one case
+  at a time) and instead added `POST`/`DELETE` on `/api/eval` so cases
+  can be added or removed directly — the seed button is now one
+  convenience option among several, not the only way in.
+
+  **Hybrid retrieval (dense + keyword + RRF + rerank) extended to
+  Matrix.** `matrix.ts`'s `computeCell` was still using the original
+  dense-only top-6 query — called out explicitly as deliberately
+  out of scope in the 2026-11-13 entry, now addressed. New
+  `hybridRetrieveSingleDocument` in `retrieve.ts` (the RRF fusion
+  logic factored into a shared `fuseRRF` helper, reused by both the
+  cross-document and single-document paths) runs the same
+  dense+keyword+rerank pipeline scoped to one document.
+
+  **Real trade-off, flagged plainly**: this adds one extra Gemini
+  rerank call per matrix cell — a 10x10 matrix now costs 100 more
+  Gemini calls than before. `matrix/step` already computes exactly
+  one cell per serverless request specifically because Vercel's
+  free-plan ~10s real request cap was getting blown past before this
+  extra round-trip existed — worth watching for matrix runs timing
+  out now that each cell does one more network call.
+
+  Syntax-checked clean (one isolated-file-check false positive on a
+  `key` prop, expected without `@types/react` resolvable outside a
+  real Next.js build — not a real error). Pushed (`2893cee`).
