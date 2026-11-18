@@ -1,16 +1,19 @@
 import { sql } from "@/lib/db";
 import { embedText, answerFromContext } from "@/lib/gemini";
 import { verifyGrounding } from "@/lib/verify";
+import { hybridRetrieveSingleDocument } from "@/lib/retrieve";
 
 /**
  * Computes (or recomputes) one Matrix cell: answers `questionText` using
- * only the chunks of the one document `documentId`, top-6 by similarity,
- * then runs the Analyst's answer through the deterministic Verifier before
- * writing it in — so a cell is only ever marked grounded once its quote
- * has actually been confirmed against the source text, not just because
- * the model said so. Scoped to a single document — this is what makes it
- * a per-document column answer rather than the cross-document search the
- * free-form Ask box does.
+ * only the chunks of the one document `documentId` — dense + keyword
+ * search fused by RRF and reranked (see lib/retrieve.ts's
+ * hybridRetrieveSingleDocument), not the old dense-only top-6 query —
+ * then runs the Analyst's answer through the deterministic Verifier
+ * before writing it in, so a cell is only ever marked grounded once its
+ * quote has actually been confirmed against the source text, not just
+ * because the model said so. Scoped to a single document — this is what
+ * makes it a per-document column answer rather than the cross-document
+ * search the free-form Ask box does.
  */
 export async function computeCell(
   documentId: string,
@@ -30,18 +33,15 @@ export async function computeCell(
     if (!doc) throw new Error("Document no longer exists.");
 
     const vector = questionEmbedding ?? (await embedText(questionText));
-    const vectorLiteral = JSON.stringify(vector);
 
-    const rows = await sql`
-      select page_label, content,
-             embedding <=> ${vectorLiteral}::vector as distance
-      from document_chunks
-      where document_id = ${documentId} and embedding is not null
-      order by distance asc
-      limit 6
-    `;
+    const context = await hybridRetrieveSingleDocument(
+      questionText,
+      vector,
+      documentId,
+      doc.filename as string,
+    );
 
-    if (rows.length === 0) {
+    if (context.length === 0) {
       await sql`
         update matrix_cells
         set status = 'ready',
@@ -55,13 +55,6 @@ export async function computeCell(
       `;
       return;
     }
-
-    const context = rows.map((r) => ({
-      documentId,
-      filename: doc.filename as string,
-      pageLabel: r.page_label as string,
-      content: r.content as string,
-    }));
 
     const analystResult = await answerFromContext(questionText, context);
     const result = verifyGrounding(analystResult, context);

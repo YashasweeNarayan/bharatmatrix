@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { CheckCircle2, Loader2, RotateCcw, X, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, Plus, RotateCcw, Trash2, X, XCircle } from "lucide-react";
 import { EvalCase, citationsOf } from "@/lib/types";
 
 export default function EvaluationPanel({ onClose }: { onClose: () => void }) {
@@ -11,6 +11,10 @@ export default function EvaluationPanel({ onClose }: { onClose: () => void }) {
   const [seeding, setSeeding] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [newQuestion, setNewQuestion] = useState("");
+  const [newExpected, setNewExpected] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const draining = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -100,6 +104,55 @@ export default function EvaluationPanel({ onClose }: { onClose: () => void }) {
     }
   }
 
+  async function addCase() {
+    if (!newQuestion.trim() || !newExpected.trim() || adding) return;
+    setErrorMsg(null);
+    setAdding(true);
+    try {
+      const res = await fetch("/api/eval", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: newQuestion,
+          expectedAnswer: newExpected,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setErrorMsg(data?.error ?? "Couldn't add that case.");
+        return;
+      }
+      setNewQuestion("");
+      setNewExpected("");
+      await refresh();
+    } catch {
+      setErrorMsg("Lost connection while adding that case.");
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function deleteCase(id: string) {
+    setErrorMsg(null);
+    setDeletingId(id);
+    try {
+      const res = await fetch("/api/eval", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        setErrorMsg(`Couldn't remove that case (${res.status}).`);
+        return;
+      }
+      await refresh();
+    } catch {
+      setErrorMsg("Lost connection while removing that case.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   async function reset() {
     setErrorMsg(null);
     setResetting(true);
@@ -164,28 +217,72 @@ export default function EvaluationPanel({ onClose }: { onClose: () => void }) {
 
           {loading ? (
             <p className="text-[13px] text-neutral-500">Loading…</p>
-          ) : !cases || cases.length === 0 ? (
-            <div className="flex flex-col items-start gap-3">
-              <p className="text-[13px] text-neutral-400">
-                No eval cases yet. Load the sample finance eval set (10
-                question/expected-answer pairs matching the synthetic test
-                PDFs) to get started.
-              </p>
-              <button
-                onClick={seed}
-                disabled={seeding}
-                className={clsx(
-                  "flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
-                  seeding
-                    ? "cursor-not-allowed bg-ink-800 text-neutral-600"
-                    : "bg-saffron-500 text-ink-950 hover:bg-saffron-400",
-                )}
-              >
-                {seeding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Load sample eval set
-              </button>
-            </div>
           ) : (
+            <>
+              <div className="mb-4 rounded-lg border border-ink-800 bg-ink-900/30 p-3.5">
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-neutral-600">
+                  Add a ground-truth case
+                </p>
+                <div className="flex flex-col gap-2">
+                  <input
+                    value={newQuestion}
+                    onChange={(e) => setNewQuestion(e.target.value)}
+                    placeholder="Question"
+                    className="w-full rounded-lg border border-ink-700 bg-ink-900/60 px-3 py-2 text-[13px] text-neutral-200 placeholder:text-neutral-600 focus:border-saffron-500"
+                  />
+                  <textarea
+                    value={newExpected}
+                    onChange={(e) => setNewExpected(e.target.value)}
+                    placeholder="Expected answer"
+                    rows={2}
+                    className="w-full resize-none rounded-lg border border-ink-700 bg-ink-900/60 px-3 py-2 text-[13px] text-neutral-200 placeholder:text-neutral-600 focus:border-saffron-500"
+                  />
+                  <button
+                    onClick={addCase}
+                    disabled={adding || !newQuestion.trim() || !newExpected.trim()}
+                    className={clsx(
+                      "flex items-center justify-center gap-1.5 self-start rounded-lg px-3.5 py-2 text-[12.5px] font-medium transition-colors",
+                      adding || !newQuestion.trim() || !newExpected.trim()
+                        ? "cursor-not-allowed bg-ink-800 text-neutral-600"
+                        : "bg-saffron-500 text-ink-950 hover:bg-saffron-400",
+                    )}
+                  >
+                    {adding ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5" />
+                    )}
+                    Add case
+                  </button>
+                </div>
+              </div>
+
+              {(!cases || cases.length === 0) && (
+                <div className="mb-4 flex flex-col items-start gap-3">
+                  <p className="text-[13px] text-neutral-400">
+                    No eval cases yet. Add one above, or load the sample
+                    finance eval set (10 question/expected-answer pairs
+                    matching the synthetic test PDFs) to get started.
+                  </p>
+                  <button
+                    onClick={seed}
+                    disabled={seeding}
+                    className={clsx(
+                      "flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
+                      seeding
+                        ? "cursor-not-allowed bg-ink-800 text-neutral-600"
+                        : "border border-ink-700 text-neutral-300 hover:bg-ink-800",
+                    )}
+                  >
+                    {seeding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Load sample eval set
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {!loading && cases && cases.length > 0 && (
             <>
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <button
@@ -226,7 +323,15 @@ export default function EvaluationPanel({ onClose }: { onClose: () => void }) {
 
               <div className="space-y-3">
                 {cases.map((c, i) => (
-                  <EvalRow key={c.id} index={i + 1} evalCase={c} />
+                  <EvalRow
+                    key={c.id}
+                    index={i + 1}
+                    evalCase={c}
+                    onDelete={() => {
+                      deleteCase(c.id);
+                    }}
+                    deleting={deletingId === c.id}
+                  />
                 ))}
               </div>
             </>
@@ -262,7 +367,17 @@ function VerdictBadge({ verdict }: { verdict: EvalCase["verdict"] }) {
   return null;
 }
 
-function EvalRow({ index, evalCase: c }: { index: number; evalCase: EvalCase }) {
+function EvalRow({
+  index,
+  evalCase: c,
+  onDelete,
+  deleting,
+}: {
+  index: number;
+  evalCase: EvalCase;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
   const citations = citationsOf(c);
 
   return (
@@ -282,6 +397,18 @@ function EvalRow({ index, evalCase: c }: { index: number; evalCase: EvalCase }) 
           ) : (
             <VerdictBadge verdict={c.verdict} />
           )}
+          <button
+            onClick={onDelete}
+            disabled={deleting}
+            aria-label="Remove this case"
+            className="text-neutral-600 hover:text-red-400 disabled:opacity-50"
+          >
+            {deleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </button>
         </div>
       </div>
 

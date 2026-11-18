@@ -59,6 +59,36 @@ const CANDIDATE_POOL_LIMIT = 60;
 // candidates ordered only by raw similarity.
 const FINAL_CONTEXT_SIZE = 20;
 
+function fuseRRF(lists: Row[][]): RetrievedChunk[] {
+  const keyOf = (r: Row) => `${r.document_id}::${r.page_label}`;
+  const fused = new Map<string, { chunk: RetrievedChunk; score: number }>();
+
+  for (const rows of lists) {
+    rows.forEach((r, i) => {
+      const key = keyOf(r);
+      const rrfContribution = 1 / (RRF_K + i + 1);
+      const existing = fused.get(key);
+      if (existing) {
+        existing.score += rrfContribution;
+      } else {
+        fused.set(key, {
+          chunk: {
+            documentId: r.document_id,
+            filename: r.filename,
+            pageLabel: r.page_label,
+            content: r.content,
+          },
+          score: rrfContribution,
+        });
+      }
+    });
+  }
+
+  return Array.from(fused.values())
+    .sort((a, b) => b.score - a.score)
+    .map((f) => f.chunk);
+}
+
 export async function hybridRetrieve(
   question: string,
   queryEmbedding: number[],
@@ -125,40 +155,7 @@ export async function hybridRetrieve(
     }) as Promise<Row[]>,
   ]);
 
-  const keyOf = (r: Row) => `${r.document_id}::${r.page_label}`;
-
-  const fused = new Map<
-    string,
-    { chunk: RetrievedChunk; score: number }
-  >();
-
-  function addRanked(rows: Row[]) {
-    rows.forEach((r, i) => {
-      const key = keyOf(r);
-      const rrfContribution = 1 / (RRF_K + i + 1);
-      const existing = fused.get(key);
-      if (existing) {
-        existing.score += rrfContribution;
-      } else {
-        fused.set(key, {
-          chunk: {
-            documentId: r.document_id,
-            filename: r.filename,
-            pageLabel: r.page_label,
-            content: r.content,
-          },
-          score: rrfContribution,
-        });
-      }
-    });
-  }
-
-  addRanked(denseRows);
-  addRanked(keywordRows);
-
-  const candidatePool = Array.from(fused.values())
-    .sort((a, b) => b.score - a.score)
-    .map((f) => f.chunk);
+  const candidatePool = fuseRRF([denseRows, keywordRows]);
 
   if (candidatePool.length === 0) return [];
 
@@ -171,5 +168,84 @@ export async function hybridRetrieve(
       err instanceof Error ? err.message : err,
     );
     return candidatePool.slice(0, FINAL_CONTEXT_SIZE);
+  }
+}
+
+// Matrix cells are scoped to one document already, so there's no
+// cross-document crowd-out problem to fix with per-document windowing —
+// these limits are just "how many candidates to pull from a single
+// document" before fusing and reranking.
+const DOC_CANDIDATE_LIMIT = 15;
+const DOC_FINAL_CONTEXT_SIZE = 6; // matches the old flat `limit 6`
+
+/**
+ * Same hybrid dense+keyword+RRF+rerank pipeline as hybridRetrieve, scoped
+ * to a single document — used by matrix.ts's computeCell instead of its
+ * old dense-only top-6 query.
+ *
+ * Worth knowing before calling this somewhere new: a Matrix run computes
+ * one cell per (document, question) pair, and this adds one extra Gemini
+ * rerank call PER CELL — so a 10-document x 10-question matrix now costs
+ * 100 extra Gemini calls it didn't before, on top of the existing
+ * embed + Analyst calls per cell. On the free tier's daily request cap,
+ * that's a real cost, not just a latency one.
+ */
+export async function hybridRetrieveSingleDocument(
+  question: string,
+  queryEmbedding: number[],
+  documentId: string,
+  filename: string,
+): Promise<RetrievedChunk[]> {
+  const vectorLiteral = JSON.stringify(queryEmbedding);
+
+  type DocRow = { document_id: string; page_label: string; content: string };
+
+  const [denseRows, keywordRows] = await Promise.all([
+    sql`
+      select document_id, page_label, content
+      from document_chunks
+      where document_id = ${documentId} and embedding is not null
+      order by embedding <=> ${vectorLiteral}::vector asc
+      limit ${DOC_CANDIDATE_LIMIT}
+    ` as Promise<DocRow[]>,
+    sql`
+      select document_id, page_label, content
+      from document_chunks
+      where document_id = ${documentId}
+        and content_tsv @@ websearch_to_tsquery('english', ${question})
+      order by ts_rank_cd(content_tsv, websearch_to_tsquery('english', ${question})) desc
+      limit ${DOC_CANDIDATE_LIMIT}
+    `.catch((err: unknown) => {
+      console.warn(
+        "[retrieve] Single-document keyword search failed — continuing " +
+          "with dense results only:",
+        err instanceof Error ? err.message : err,
+      );
+      return [] as DocRow[];
+    }) as Promise<DocRow[]>,
+  ]);
+
+  // document_chunks has no filename column — the plain queries above
+  // don't join `documents`, so fill it in here rather than paying for a
+  // join on every call.
+  const withFilename = (rows: DocRow[]): Row[] =>
+    rows.map((r) => ({ ...r, filename }));
+
+  const candidatePool = fuseRRF([
+    withFilename(denseRows),
+    withFilename(keywordRows),
+  ]);
+
+  if (candidatePool.length === 0) return [];
+
+  try {
+    return await rerankChunks(question, candidatePool, DOC_FINAL_CONTEXT_SIZE);
+  } catch (err) {
+    console.warn(
+      "[retrieve] Single-document reranker call failed — falling back " +
+        "to the RRF-fused order without reranking:",
+      err instanceof Error ? err.message : err,
+    );
+    return candidatePool.slice(0, DOC_FINAL_CONTEXT_SIZE);
   }
 }

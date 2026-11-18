@@ -9,6 +9,7 @@ import { LogOut } from "lucide-react";
 const NAV = [
   { href: "/workspace", label: "Workspace" },
   { href: "/matrix", label: "Matrix" },
+  { href: "/evaluation", label: "Evaluation" },
 ];
 
 export default function AppShell({
