@@ -1013,3 +1013,34 @@ disk here, and will be pushed in one go once the connection is live.
   Syntax-checked clean (one isolated-file-check false positive on a
   `key` prop, expected without `@types/react` resolvable outside a
   real Next.js build — not a real error). Pushed (`2893cee`).
+
+- **2026-11-21 (cross-encoder/Gemini hybrid fallback — groundwork)** —
+  Requested: make the reranker itself hybrid — try a self-hosted
+  cross-encoder first, and if it doesn't respond in a reasonable time
+  (the known risk with free-tier hosting, which sleeps when idle),
+  fall back to the existing Gemini reranker automatically, with a
+  visible "waiting → switching" indicator in the Ask UI.
+
+  Built: `src/lib/crossEncoder.ts` calls an env-configured
+  `CROSS_ENCODER_URL` with a 2.5-second timeout (`AbortController`);
+  `rerankWithFallback()` in `retrieve.ts` tries that first, falls back
+  to the current Gemini-based `rerankChunks` on any failure (unset
+  URL, non-2xx, bad response shape, or timeout), and falls back once
+  more to the plain RRF order if even Gemini fails. `hybridRetrieve`
+  and `hybridRetrieveSingleDocument` now return `{ chunks,
+  rerankerUsed }` instead of a bare array, threaded through to
+  `/api/ask`'s JSON response. `AskPanel.tsx` shows "Trying your
+  cross-encoder reranker…" while waiting, switches its own wording to
+  "switching to the Gemini reranker…" at the same 2.5s mark the server
+  uses, and shows a small badge on the answer saying which reranker
+  actually produced it. Worth being precise about what this is: a
+  client-side timer that mirrors the server's known timeout value, not
+  a live progress stream — there's no real-time channel telling the
+  browser the exact moment the server gives up; building that for real
+  would need Server-Sent Events, which this isn't.
+
+  `CROSS_ENCODER_URL` is unset on this deployment, so this is pure
+  groundwork right now — every request still falls straight through
+  to Gemini, identical to before this change, until a real trained
+  model is deployed somewhere and the env var is set. Syntax-checked
+  clean, pushed (`3010a90`).
