@@ -1044,3 +1044,35 @@ disk here, and will be pushed in one go once the connection is live.
   to Gemini, identical to before this change, until a real trained
   model is deployed somewhere and the env var is set. Syntax-checked
   clean, pushed (`3010a90`).
+
+- **2026-11-21 (implicit feedback logging + nightly export, for the
+  cross-encoder's future fine-tuning loop)** — Requested: keep
+  improving the cross-encoder over time from real usage. Clarified
+  this is "feedback-driven fine-tuning," not literal RLHF (no reward
+  model, no PPO — that's a different, heavier technique mostly used
+  for training chat models). Chosen signal source: implicit, reusing
+  the deterministic Verifier's grounded check rather than adding a
+  thumbs up/down UI.
+
+  `rerank_feedback` table added; `logRerankFeedback()` in
+  `feedback.ts` logs a grounded answer's cited chunk(s) as positive
+  (question, passage) pairs and up to 5 other retrieved-but-uncited
+  chunks as negatives, called fire-and-forget from `/api/ask` so a
+  logging failure never touches the actual answer. A not-grounded
+  result logs nothing — no confirmed label either way.
+
+  A Vercel Cron job (`vercel.json`, 18:30 UTC = midnight IST, per the
+  user's "end of the day" request) hits
+  `/api/cron/export-feedback` nightly, atomically claims every
+  unexported row, and writes a dated JSONL snapshot to Vercel Blob —
+  protected by `CRON_SECRET`, which still needs to be added to
+  Vercel's env vars for the cron's auth header to match.
+
+  **Scope boundary, stated plainly**: this only prepares the dataset.
+  There's no GPU or training framework inside a Next.js serverless
+  function — actual fine-tuning happens wherever the cross-encoder
+  itself gets hosted (not yet built), which would need its own
+  scheduled job to pull this snapshot and retrain. Until that part
+  exists, this just accumulates nightly snapshots for a human to feed
+  into the training script manually on Colab. Syntax-checked clean,
+  pushed (`c85ba73`).
