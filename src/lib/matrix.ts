@@ -34,7 +34,7 @@ export async function computeCell(
 
     const vector = questionEmbedding ?? (await embedText(questionText));
 
-    const context = await hybridRetrieveSingleDocument(
+    const { chunks: context } = await hybridRetrieveSingleDocument(
       questionText,
       vector,
       documentId,

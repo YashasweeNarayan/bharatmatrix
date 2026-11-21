@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Search, LayoutGrid, Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Search, LayoutGrid, Check, Cpu } from "lucide-react";
 import clsx from "clsx";
 
 type Citation = {
@@ -10,12 +10,25 @@ type Citation = {
   quote: string;
 };
 
+type RerankerUsed = "cross-encoder" | "gemini" | "none";
+
 type AnswerResult = {
   answer: string;
   grounded: boolean;
   citations: Citation[];
   verificationNote?: string | null;
+  rerankerUsed?: RerankerUsed;
 };
+
+// Mirrors CROSS_ENCODER_URL's timeout in src/lib/crossEncoder.ts
+// (DEFAULT_TIMEOUT_MS). This is a client-side approximation of server
+// timing, not a live progress signal — there's no streaming connection
+// telling this component when the server actually gives up on the
+// cross-encoder and falls back to Gemini. It just switches its own
+// wording at roughly the same point the server does, so "waiting" and
+// "switching to fallback" track reality closely without needing to
+// build real-time status updates for a single request/response call.
+const CROSS_ENCODER_TIMEOUT_MS = 2500;
 
 type FilenameLookup = Record<string, string>;
 
@@ -34,8 +47,16 @@ export default function AskPanel({
   const [movingToMatrix, setMovingToMatrix] = useState(false);
   const [movedToMatrix, setMovedToMatrix] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
+  const [waitStage, setWaitStage] = useState<"waiting" | "fallback">("waiting");
+  const waitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const disabled = readyCount === 0 || loading;
+
+  useEffect(() => {
+    return () => {
+      if (waitTimer.current) clearTimeout(waitTimer.current);
+    };
+  }, []);
 
   async function ask() {
     if (!question.trim() || disabled) return;
@@ -44,6 +65,11 @@ export default function AskPanel({
     setResult(null);
     setMovedToMatrix(false);
     setMoveError(null);
+    setWaitStage("waiting");
+    waitTimer.current = setTimeout(
+      () => setWaitStage("fallback"),
+      CROSS_ENCODER_TIMEOUT_MS,
+    );
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
@@ -60,6 +86,7 @@ export default function AskPanel({
     } catch {
       setError("Couldn't reach the server.");
     } finally {
+      if (waitTimer.current) clearTimeout(waitTimer.current);
       setLoading(false);
     }
   }
@@ -165,6 +192,15 @@ export default function AskPanel({
             </button>
           )}
         </div>
+
+        {loading && (
+          <p className="flex items-center gap-1.5 text-[12px] text-neutral-500">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {waitStage === "waiting"
+              ? "Trying your cross-encoder reranker…"
+              : "Not responding in time — switching to the Gemini reranker…"}
+          </p>
+        )}
       </div>
 
       {error && (
@@ -192,6 +228,22 @@ export default function AskPanel({
               {result.grounded ? "grounded" : "not found"}
             </span>
           </div>
+
+          {result.rerankerUsed && result.rerankerUsed !== "none" && (
+            <p
+              className="mt-2 flex items-center gap-1 text-[11px] text-neutral-600"
+              title={
+                result.rerankerUsed === "cross-encoder"
+                  ? "Your self-hosted cross-encoder responded in time and ranked these results."
+                  : "The cross-encoder didn't respond in time (or isn't configured yet), so the Gemini reranker handled this one instead."
+              }
+            >
+              <Cpu className="h-3 w-3" />
+              {result.rerankerUsed === "cross-encoder"
+                ? "Ranked by your cross-encoder"
+                : "Ranked by fallback (Gemini reranker)"}
+            </p>
+          )}
 
           {result.verificationNote && (
             <p className="mt-2 text-[12px] text-saffron-400/80">

@@ -144,7 +144,11 @@ async function handleQuestion(chatId: number, question: string): Promise<void> {
   }
 
   const queryEmbedding = await embedText(question);
-  const context = await hybridRetrieve(question, queryEmbedding, userId);
+  const { chunks: context } = await hybridRetrieve(
+    question,
+    queryEmbedding,
+    userId,
+  );
 
   if (context.length === 0) {
     await sendTelegramMessage(

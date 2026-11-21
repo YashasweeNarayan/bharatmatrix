@@ -63,7 +63,11 @@ export async function POST(req: NextRequest) {
   // LLM-based reranker second pass. See lib/retrieve.ts for the full
   // rationale — this replaces the old dense-only, per-document-
   // windowed query that lived directly in this route.
-  const context = await hybridRetrieve(question, queryEmbedding, user.id);
+  const { chunks: context, rerankerUsed } = await hybridRetrieve(
+    question,
+    queryEmbedding,
+    user.id,
+  );
 
   if (context.length === 0) {
     return NextResponse.json({
@@ -72,13 +76,14 @@ export async function POST(req: NextRequest) {
         "processing.",
       grounded: false,
       citations: [],
+      rerankerUsed,
     });
   }
 
   try {
     const analystResult = await answerFromContext(question, context);
     const result = verifyGrounding(analystResult, context);
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, rerankerUsed });
   } catch (err) {
     return NextResponse.json(
       {

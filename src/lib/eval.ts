@@ -40,7 +40,11 @@ export async function computeEval(
 
     // Mirrors /api/ask's retrieval exactly (see lib/retrieve.ts) —
     // hybrid dense+keyword search fused by RRF, then reranked.
-    const context = await hybridRetrieve(question, queryEmbedding, userId);
+    const { chunks: context } = await hybridRetrieve(
+      question,
+      queryEmbedding,
+      userId,
+    );
 
     if (context.length === 0) {
       await sql`

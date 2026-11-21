@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
 import { rerankChunks } from "@/lib/gemini";
+import { rerankWithCrossEncoder, CrossEncoderUnavailableError } from "@/lib/crossEncoder";
 
 export type RetrievedChunk = {
   documentId: string;
@@ -7,6 +8,70 @@ export type RetrievedChunk = {
   pageLabel: string;
   content: string;
 };
+
+export type RerankerUsed = "cross-encoder" | "gemini" | "none";
+
+export type RetrieveResult = {
+  chunks: RetrievedChunk[];
+  rerankerUsed: RerankerUsed;
+};
+
+/**
+ * Tries the self-hosted cross-encoder first (short timeout — see
+ * crossEncoder.ts for why), falls back to the existing Gemini-based
+ * reranker if it's unconfigured, slow, or errors, and falls back again
+ * to the plain RRF order if even Gemini fails. This is the one place
+ * that decides reranker priority — both hybridRetrieve and
+ * hybridRetrieveSingleDocument call this instead of rerankChunks
+ * directly.
+ */
+async function rerankWithFallback(
+  question: string,
+  candidates: RetrievedChunk[],
+  keep: number,
+): Promise<RetrieveResult> {
+  if (candidates.length <= keep) {
+    return { chunks: candidates, rerankerUsed: "none" };
+  }
+
+  try {
+    const rankedIndexes = await rerankWithCrossEncoder(
+      question,
+      candidates.map((c) => c.content),
+    );
+    const seen = new Set<number>();
+    const ordered: RetrievedChunk[] = [];
+    for (const idx of rankedIndexes) {
+      if (idx < 0 || idx >= candidates.length || seen.has(idx)) continue;
+      seen.add(idx);
+      ordered.push(candidates[idx]);
+    }
+    for (let i = 0; i < candidates.length; i++) {
+      if (!seen.has(i)) ordered.push(candidates[i]);
+    }
+    return { chunks: ordered.slice(0, keep), rerankerUsed: "cross-encoder" };
+  } catch (err) {
+    if (!(err instanceof CrossEncoderUnavailableError)) {
+      console.warn("[retrieve] Unexpected cross-encoder error:", err);
+    }
+    // Falls through to Gemini below — this is the expected path until
+    // a real cross-encoder is actually deployed and CROSS_ENCODER_URL
+    // is set, and also the expected path on a cold-start timeout once
+    // one is.
+  }
+
+  try {
+    const chunks = await rerankChunks(question, candidates, keep);
+    return { chunks, rerankerUsed: "gemini" };
+  } catch (err) {
+    console.warn(
+      "[retrieve] Gemini reranker also failed — falling back to the " +
+        "RRF-fused order without any reranking:",
+      err instanceof Error ? err.message : err,
+    );
+    return { chunks: candidates.slice(0, keep), rerankerUsed: "none" };
+  }
+}
 
 type Row = {
   document_id: string;
@@ -93,7 +158,7 @@ export async function hybridRetrieve(
   question: string,
   queryEmbedding: number[],
   userId: string,
-): Promise<RetrievedChunk[]> {
+): Promise<RetrieveResult> {
   const vectorLiteral = JSON.stringify(queryEmbedding);
 
   const [denseRows, keywordRows] = await Promise.all([
@@ -157,18 +222,11 @@ export async function hybridRetrieve(
 
   const candidatePool = fuseRRF([denseRows, keywordRows]);
 
-  if (candidatePool.length === 0) return [];
-
-  try {
-    return await rerankChunks(question, candidatePool, FINAL_CONTEXT_SIZE);
-  } catch (err) {
-    console.warn(
-      "[retrieve] Reranker call failed — falling back to the RRF-fused " +
-        "order without reranking:",
-      err instanceof Error ? err.message : err,
-    );
-    return candidatePool.slice(0, FINAL_CONTEXT_SIZE);
+  if (candidatePool.length === 0) {
+    return { chunks: [], rerankerUsed: "none" };
   }
+
+  return rerankWithFallback(question, candidatePool, FINAL_CONTEXT_SIZE);
 }
 
 // Matrix cells are scoped to one document already, so there's no
@@ -195,7 +253,7 @@ export async function hybridRetrieveSingleDocument(
   queryEmbedding: number[],
   documentId: string,
   filename: string,
-): Promise<RetrievedChunk[]> {
+): Promise<RetrieveResult> {
   const vectorLiteral = JSON.stringify(queryEmbedding);
 
   type DocRow = { document_id: string; page_label: string; content: string };
@@ -236,16 +294,9 @@ export async function hybridRetrieveSingleDocument(
     withFilename(keywordRows),
   ]);
 
-  if (candidatePool.length === 0) return [];
-
-  try {
-    return await rerankChunks(question, candidatePool, DOC_FINAL_CONTEXT_SIZE);
-  } catch (err) {
-    console.warn(
-      "[retrieve] Single-document reranker call failed — falling back " +
-        "to the RRF-fused order without reranking:",
-      err instanceof Error ? err.message : err,
-    );
-    return candidatePool.slice(0, DOC_FINAL_CONTEXT_SIZE);
+  if (candidatePool.length === 0) {
+    return { chunks: [], rerankerUsed: "none" };
   }
+
+  return rerankWithFallback(question, candidatePool, DOC_FINAL_CONTEXT_SIZE);
 }
