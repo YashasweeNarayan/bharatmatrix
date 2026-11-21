@@ -4,6 +4,7 @@ import { embedText, answerFromContext } from "@/lib/gemini";
 import { verifyGrounding } from "@/lib/verify";
 import { requireUser, UnauthorizedError } from "@/lib/auth";
 import { hybridRetrieve } from "@/lib/retrieve";
+import { logRerankFeedback } from "@/lib/feedback";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -83,6 +84,14 @@ export async function POST(req: NextRequest) {
   try {
     const analystResult = await answerFromContext(question, context);
     const result = verifyGrounding(analystResult, context);
+
+    // Fire-and-forget: this feeds the cross-encoder's nightly feedback
+    // export (see /api/cron/export-feedback), never the user's answer —
+    // a logging failure here must not turn a good answer into an error.
+    logRerankFeedback(user.id, question, context, result).catch((err) => {
+      console.warn("[ask] Failed to log rerank feedback:", err);
+    });
+
     return NextResponse.json({ ...result, rerankerUsed });
   } catch (err) {
     return NextResponse.json(

@@ -308,6 +308,34 @@ export function ensureSchema(): Promise<void> {
         create index if not exists telegram_links_user_id_idx
         on telegram_links (user_id)
       `;
+
+      // Training data for the cross-encoder's feedback loop. This is
+      // WEAK/IMPLICIT supervision, not explicit human labels: it reuses
+      // the deterministic Verifier's grounded check (lib/verify.ts)
+      // instead of asking users to rate answers. When a question comes
+      // back grounded, the chunk(s) the Verifier actually confirmed
+      // the quote came from are logged as positive (question, passage)
+      // pairs, and the other chunks that were retrieved but NOT cited
+      // are logged as negatives — free hard negatives, since they were
+      // plausible enough to make the candidate pool but didn't end up
+      // answering the question. A not-grounded result logs nothing: no
+      // confirmed signal either way, so no label is honest to assign.
+      await sql`
+        create table if not exists rerank_feedback (
+          id uuid primary key default gen_random_uuid(),
+          user_id uuid references users(id) on delete set null,
+          document_id uuid,
+          question text not null,
+          passage text not null,
+          label smallint not null, -- 1 = relevant, 0 = not relevant
+          used_in_training boolean not null default false,
+          created_at timestamptz not null default now()
+        )
+      `;
+      await sql`
+        create index if not exists rerank_feedback_export_idx
+        on rerank_feedback (used_in_training, created_at)
+      `;
     })();
   }
   return schemaReady;

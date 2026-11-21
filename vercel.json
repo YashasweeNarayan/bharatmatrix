@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/export-feedback",
+      "schedule": "30 18 * * *"
+    }
+  ]
+}
