@@ -180,6 +180,12 @@ export default function DocumentsPanel({
 
       // Deliberately sequential — see /api/documents/route.ts for why
       // (concurrent uploads once raced inside req.formData() parsing).
+      // The upload *requests* have to stay one-at-a-time, but refreshing
+      // and kicking off indexing after each one (instead of once at the
+      // very end) is what makes several files feel like they're landing
+      // one by one as each finishes, rather than all sitting in
+      // "uploading…" together and then popping in at once when the last
+      // one completes.
       for (const file of list) {
         const body = new FormData();
         body.append("file", file);
@@ -188,9 +194,9 @@ export default function DocumentsPanel({
         } finally {
           setUploading((prev) => prev.filter((n) => n !== file.name));
         }
+        await refresh();
+        drainEmbeddings();
       }
-      await refresh();
-      drainEmbeddings();
     },
     [refresh, drainEmbeddings],
   );
@@ -341,7 +347,7 @@ export default function DocumentsPanel({
           {uploading.map((name) => (
             <li
               key={`uploading-${name}`}
-              className="flex items-center gap-3 rounded-xl px-3 py-3"
+              className="flex animate-fade-in-up items-center gap-3 rounded-xl px-3 py-3"
             >
               <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-saffron-500" />
               <span className="truncate text-[13px] text-neutral-300">
@@ -353,7 +359,7 @@ export default function DocumentsPanel({
           {docs.map((doc) => (
             <li
               key={doc.id}
-              className="rounded-xl transition-colors hover:bg-ink-800/50"
+              className="animate-fade-in-up rounded-xl transition-colors hover:bg-ink-800/50"
             >
               <div
                 onClick={() => toggleExpand(doc.id)}

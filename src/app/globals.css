@@ -12,14 +12,21 @@
  *
  * Dark is the default and the values below are exactly what this app
  * already looked like before theming existed. Light is a genuine
- * second palette (not an auto-invert) in the same cool blue-gray hue,
- * with each neutral text step re-paired to the step that gives it the
- * same relative contrast against a light background that it had against
- * the dark one (neutral-50, the brightest text in dark mode, becomes
- * the darkest/strongest text in light mode, and so on down the ramp).
- * `saffron` and `matrix` (the accent colors) are untouched by theme —
- * see `onaccent` in tailwind.config.ts for the one color deliberately
- * left out of this system.
+ * second palette (not an auto-invert), designed step by step for real
+ * contrast against a white/near-white page rather than mirrored
+ * mechanically from the dark values (an earlier version of this file
+ * did that and it was wrong — reflecting the dark ramp made several
+ * light-mode steps, like neutral-600/700 and ink-700's border, nearly
+ * the same color as the background they sat on).
+ *
+ * `saffron-400` and `matrix-400` (used as badge/status text, e.g. the
+ * "ready" label) and `red-400` (error text) ARE themed here too, with a
+ * darker, more saturated version of the same hue for light mode — the
+ * bright pastel versions that read fine on near-black are too low-
+ * contrast on white. `saffron-500/600` and `matrix-500/600` (solid
+ * button backgrounds, icons, focus rings) are vivid enough to stay
+ * fixed in both themes. `onaccent` (tailwind.config.ts) is the one
+ * color deliberately left out of this system entirely.
  */
 :root {
   --font-inter: "Manrope", system-ui, sans-serif;
@@ -40,26 +47,40 @@
   --neutral-600: 82 82 82;
   --neutral-700: 64 64 64;
 
+  --saffron-400: 255 181 71;
+  --matrix-400: 94 234 212;
+  --red-400: 248 113 113;
+
   --body-text: 233 236 241;
 }
 
 :root[data-theme="light"] {
-  --ink-950: 248 249 251;
+  /* Card (900) is the lightest surface — pure white — with the page
+     itself (950) just a hair off it, so cards still read as "raised."
+     700/600 are real, visible hairlines against that white, not a
+     near-invisible tint of it. */
+  --ink-950: 246 247 249;
   --ink-900: 255 255 255;
-  --ink-800: 238 240 244;
-  --ink-700: 221 225 231;
-  --ink-600: 195 201 210;
+  --ink-800: 231 234 238;
+  --ink-700: 203 208 215;
+  --ink-600: 160 167 177;
 
-  --neutral-50: 23 23 23;
-  --neutral-100: 38 38 38;
-  --neutral-200: 64 64 64;
-  --neutral-300: 82 82 82;
-  --neutral-400: 115 115 115;
-  --neutral-500: 163 163 163;
-  --neutral-600: 212 212 212;
-  --neutral-700: 229 229 229;
+  /* Each step picked for its own legibility against white, not derived
+     by reflecting the dark-mode number. */
+  --neutral-50: 20 20 22;
+  --neutral-100: 38 38 41;
+  --neutral-200: 61 61 66;
+  --neutral-300: 82 82 89;
+  --neutral-400: 107 107 115;
+  --neutral-500: 128 128 136;
+  --neutral-600: 142 142 150;
+  --neutral-700: 160 160 168;
 
-  --body-text: 23 23 23;
+  --saffron-400: 146 64 14;
+  --matrix-400: 13 110 102;
+  --red-400: 185 28 28;
+
+  --body-text: 20 20 22;
 }
 
 html {

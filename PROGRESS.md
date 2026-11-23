@@ -1184,3 +1184,39 @@ current password via bcrypt before accepting a new one) added above
 the existing account-info and sign-out cards.
 
 Syntax-checked clean, committed, pushed.
+
+## 2026-11-24 — Avatar initials, light-theme contrast fix, smoother upload reveal
+
+**Avatar**: initials now show just the first letter (e.g. "M"), not
+first+last — matches what was actually asked; the two-letter version
+was my own assumption from the earlier "like YN" example.
+
+**Light theme contrast bug, fixed**: the light palette shipped
+earlier was built by mechanically mirroring the dark-mode ramp
+(swapping neutral-50↔900's position, etc.), and that mirroring broke
+down for the dimmer steps — `neutral-600`/`neutral-700` and the
+`ink-700` border landed only a few RGB points off pure white, which
+is effectively invisible on a light background even though the same
+numeric "distance" looked fine against a near-black one. Replaced
+with values picked directly for legibility against white rather than
+reflected from the dark values. Also themed `saffron-400`/
+`matrix-400`/`red-400` specifically (darker, more saturated versions
+of the same hue in light mode) — these are the shades used for status
+text like the "ready" badge and error messages, and the bright pastel
+versions made for a dark background were genuinely hard to read on
+white. `saffron-500/600` and `matrix-500/600` (solid buttons, icons)
+stay fixed in both themes — those were never the problem.
+
+**Document upload animation**: `DocumentsPanel.tsx`'s upload loop
+used to call `refresh()` once after every file in a batch had
+finished uploading, so several documents visually appeared all at
+once after a short pause at the end — correct sequencing (uploads
+stay one-at-a-time, see the comment in `/api/documents/route.ts`
+for why), but a clunky reveal. Now it refreshes (and kicks off
+indexing) after *each* file instead of once at the end, so documents
+land one by one as they actually finish, and each new row fades/
+slides in (`animate-fade-in-up`, a new Tailwind keyframe) instead of
+popping in — keyed by document id, so only genuinely new rows play
+the animation, not the whole list re-rendering on every refresh.
+
+Syntax-checked clean, committed, pushed.

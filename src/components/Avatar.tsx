@@ -7,14 +7,8 @@
  */
 export function initialsFor(name: string): string {
   const base = name.includes("@") ? name.split("@")[0] : name;
-  const tokens = base.split(/[\s._-]+/).filter(Boolean);
-  if (tokens.length === 0) return "?";
-  if (tokens.length === 1) {
-    return tokens[0].length >= 2
-      ? tokens[0].slice(0, 2).toUpperCase()
-      : tokens[0][0].toUpperCase();
-  }
-  return (tokens[0][0] + tokens[tokens.length - 1][0]).toUpperCase();
+  const trimmed = base.trim();
+  return trimmed ? trimmed[0].toUpperCase() : "?";
 }
 
 export default function Avatar({
@@ -43,7 +37,7 @@ export default function Avatar({
   return (
     <span
       className="flex flex-shrink-0 items-center justify-center rounded-full bg-saffron-500 font-semibold text-onaccent"
-      style={{ width: size, height: size, fontSize: size * 0.38 }}
+      style={{ width: size, height: size, fontSize: size * 0.46 }}
       aria-hidden
     >
       {initialsFor(name)}

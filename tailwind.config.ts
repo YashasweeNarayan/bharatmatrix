@@ -37,14 +37,25 @@ const config: Config = {
         // shouldn't flip either. Not themed on purpose.
         onaccent: "#0a0b0f",
         saffron: {
-          400: "#ffb547",
+          // 400 is themed (badge/status text needs a darker, more
+          // saturated amber on a light background than on a dark one);
+          // 500/600 are fixed solid-button/icon colors, vivid enough
+          // for both themes as-is.
+          400: "rgb(var(--saffron-400) / <alpha-value>)",
           500: "#ff9f1c",
           600: "#e8870a",
         },
         matrix: {
-          400: "#5eead4",
+          400: "rgb(var(--matrix-400) / <alpha-value>)",
           500: "#2dd4bf",
           600: "#0d9488",
+        },
+        red: {
+          // Only the 400 "error text" shade is themed, for the same
+          // reason as saffron/matrix-400 above; other red shades
+          // (used for borders/background tints) keep Tailwind's
+          // defaults, which read fine as-is in both themes.
+          400: "rgb(var(--red-400) / <alpha-value>)",
         },
       },
       fontFamily: {
@@ -54,11 +65,16 @@ const config: Config = {
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         shimmer: "shimmer 2s linear infinite",
+        "fade-in-up": "fadeInUp 0.35s ease-out",
       },
       keyframes: {
         shimmer: {
           "0%": { backgroundPosition: "-1000px 0" },
           "100%": { backgroundPosition: "1000px 0" },
+        },
+        fadeInUp: {
+          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
         },
       },
     },
