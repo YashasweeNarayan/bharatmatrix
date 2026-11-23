@@ -18,7 +18,7 @@ export default async function EvaluationPage() {
   }
 
   return (
-    <AppShell email={user.email}>
+    <AppShell email={user.email} username={user.username} avatarUrl={user.avatarUrl}>
       <EvaluationHost />
     </AppShell>
   );

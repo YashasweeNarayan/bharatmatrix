@@ -18,7 +18,7 @@ export default async function MatrixPage() {
   }
 
   return (
-    <AppShell email={user.email}>
+    <AppShell email={user.email} username={user.username} avatarUrl={user.avatarUrl}>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
           Matrix

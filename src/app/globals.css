@@ -2,9 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theming: `ink` (surfaces) and `neutral` (text) are CSS variables here,
+ * read by tailwind.config.ts as rgb(var(--x) / <alpha-value>) so every
+ * existing bg-ink-*, border-ink-* and text-neutral-* class across the
+ * app re-colors from one data-theme switch — no component had to change.
+ * Values are R G B triplets (space-separated, no commas) because that's
+ * what Tailwind's alpha-value pattern expects.
+ *
+ * Dark is the default and the values below are exactly what this app
+ * already looked like before theming existed. Light is a genuine
+ * second palette (not an auto-invert) in the same cool blue-gray hue,
+ * with each neutral text step re-paired to the step that gives it the
+ * same relative contrast against a light background that it had against
+ * the dark one (neutral-50, the brightest text in dark mode, becomes
+ * the darkest/strongest text in light mode, and so on down the ramp).
+ * `saffron` and `matrix` (the accent colors) are untouched by theme —
+ * see `onaccent` in tailwind.config.ts for the one color deliberately
+ * left out of this system.
+ */
 :root {
   --font-inter: "Manrope", system-ui, sans-serif;
   --font-jetbrains: "IBM Plex Mono", monospace;
+
+  --ink-950: 10 11 15;
+  --ink-900: 17 19 24;
+  --ink-800: 26 29 36;
+  --ink-700: 36 40 49;
+  --ink-600: 52 58 70;
+
+  --neutral-50: 250 250 250;
+  --neutral-100: 245 245 245;
+  --neutral-200: 229 229 229;
+  --neutral-300: 212 212 212;
+  --neutral-400: 163 163 163;
+  --neutral-500: 115 115 115;
+  --neutral-600: 82 82 82;
+  --neutral-700: 64 64 64;
+
+  --body-text: 233 236 241;
+}
+
+:root[data-theme="light"] {
+  --ink-950: 248 249 251;
+  --ink-900: 255 255 255;
+  --ink-800: 238 240 244;
+  --ink-700: 221 225 231;
+  --ink-600: 195 201 210;
+
+  --neutral-50: 23 23 23;
+  --neutral-100: 38 38 38;
+  --neutral-200: 64 64 64;
+  --neutral-300: 82 82 82;
+  --neutral-400: 115 115 115;
+  --neutral-500: 163 163 163;
+  --neutral-600: 212 212 212;
+  --neutral-700: 229 229 229;
+
+  --body-text: 23 23 23;
 }
 
 html {
@@ -12,8 +67,9 @@ html {
 }
 
 body {
-  background-color: #0a0b0f;
-  color: #e9ecf1;
+  background-color: rgb(var(--ink-950));
+  color: rgb(var(--body-text));
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* visible keyboard focus everywhere */
@@ -40,6 +96,14 @@ body {
     transparent 0
   );
   background-size: 22px 22px;
+}
+
+:root[data-theme="light"] .bg-grain {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(10, 11, 15, 0.05) 1px,
+    transparent 0
+  );
 }
 
 /*

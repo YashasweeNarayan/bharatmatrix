@@ -28,7 +28,7 @@ export default async function SettingsPage() {
   `;
 
   return (
-    <AppShell email={user.email}>
+    <AppShell email={user.email} username={user.username} avatarUrl={user.avatarUrl}>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
           Settings
@@ -41,6 +41,8 @@ export default async function SettingsPage() {
       <div className="mt-8">
         <SettingsPanel
           email={user.email}
+          initialUsername={user.username}
+          initialAvatarUrl={user.avatarUrl}
           createdAt={account?.created_at ?? new Date().toISOString()}
           documentCount={documentCount ?? 0}
           telegramLinked={Boolean(telegramLink)}

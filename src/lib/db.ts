@@ -42,6 +42,16 @@ export function ensureSchema(): Promise<void> {
         )
       `;
 
+      // Optional display name and a picture to show in the header/sidebar.
+      // No uniqueness constraint on username — it's a display label here,
+      // never used for lookup or login, so two people sharing one isn't a
+      // conflict worth handling. avatar_url points at a Vercel Blob object
+      // uploaded from Settings; there's no Google sign-in in this app, so
+      // this is always a picture the user chose to upload, never pulled
+      // automatically from a Gmail account.
+      await sql`alter table users add column if not exists username text`;
+      await sql`alter table users add column if not exists avatar_url text`;
+
       // A session is a random, unguessable token handed to the browser as
       // an httpOnly cookie. The cookie itself carries no information other
       // than the token — who it belongs to and whether it's still valid

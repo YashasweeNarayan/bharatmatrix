@@ -282,7 +282,7 @@ export default function MatrixTable() {
             "flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
             !newQuestion.trim() || addingQuestion
               ? "cursor-not-allowed bg-ink-800 text-neutral-600"
-              : "bg-saffron-500 text-ink-950 hover:bg-saffron-400",
+              : "bg-saffron-500 text-onaccent hover:bg-saffron-400",
           )}
         >
           {addingQuestion ? (

@@ -15,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useState } from "react";
+import Avatar from "@/components/Avatar";
 
 const NAV = [
   { href: "/workspace", label: "Home", icon: Home },
@@ -38,16 +39,21 @@ const NAV = [
  */
 export default function Sidebar({
   email,
+  username,
+  avatarUrl,
   open,
   onClose,
 }: {
   email: string;
+  username?: string | null;
+  avatarUrl?: string | null;
   open: boolean;
   onClose: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const displayName = username || email;
 
   async function logout() {
     setLoggingOut(true);
@@ -119,12 +125,12 @@ export default function Sidebar({
         </nav>
 
         <div className="w-[260px] flex-shrink-0 border-t border-ink-700 p-3">
-          <p
-            className="truncate px-1 pb-2 text-[12px] text-neutral-500"
-            title={email}
-          >
-            {email}
-          </p>
+          <div className="flex items-center gap-2 px-1 pb-2">
+            <Avatar name={displayName} avatarUrl={avatarUrl} size={22} />
+            <p className="truncate text-[12px] text-neutral-500" title={email}>
+              {displayName}
+            </p>
+          </div>
           <button
             onClick={logout}
             disabled={loggingOut}

@@ -24,7 +24,7 @@ export default function HeaderAuthControls({
         </Link>
         <Link
           href="/signup"
-          className="rounded-full bg-neutral-100 px-4 py-2 text-[13px] font-medium text-ink-950 transition-colors hover:bg-white"
+          className="rounded-full bg-neutral-100 px-4 py-2 text-[13px] font-medium text-onaccent transition-colors hover:bg-white"
         >
           Sign up
         </Link>
@@ -39,7 +39,7 @@ export default function HeaderAuthControls({
       </span>
       <Link
         href="/workspace"
-        className="rounded-full bg-neutral-100 px-4 py-2 text-[13px] font-medium text-ink-950 transition-colors hover:bg-white"
+        className="rounded-full bg-neutral-100 px-4 py-2 text-[13px] font-medium text-onaccent transition-colors hover:bg-white"
       >
         Open workspace
       </Link>

@@ -53,7 +53,7 @@ export default async function Home() {
           <div className="mt-8 flex items-center gap-4">
             <Link
               href={user ? "/workspace" : "/signup"}
-              className="rounded-full bg-saffron-500 px-5 py-2.5 text-[13px] font-medium text-ink-950 transition-colors hover:bg-saffron-400"
+              className="rounded-full bg-saffron-500 px-5 py-2.5 text-[13px] font-medium text-onaccent transition-colors hover:bg-saffron-400"
             >
               {user ? "Open workspace" : "Get started"}
             </Link>

@@ -9,6 +9,8 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export type AuthUser = {
   id: string;
   email: string;
+  username: string | null;
+  avatarUrl: string | null;
 };
 
 export async function hashPassword(password: string): Promise<string> {
@@ -60,7 +62,7 @@ export async function getUserByToken(
   if (!token) return null;
 
   const rows = await sql`
-    select u.id, u.email, s.expires_at
+    select u.id, u.email, u.username, u.avatar_url, s.expires_at
     from sessions s
     join users u on u.id = s.user_id
     where s.token = ${token}
@@ -73,7 +75,12 @@ export async function getUserByToken(
     return null;
   }
 
-  return { id: row.id as string, email: row.email as string };
+  return {
+    id: row.id as string,
+    email: row.email as string,
+    username: (row.username as string | null) ?? null,
+    avatarUrl: (row.avatar_url as string | null) ?? null,
+  };
 }
 
 /** For use in API routes, which get the cookie off the NextRequest. */

@@ -1129,3 +1129,58 @@ label changed — so the existing login/signup redirect-after-auth
 logic (`next=/workspace`) didn't need touching.
 
 Syntax-checked clean across every new/changed file, committed, pushed.
+
+## 2026-11-24 — Header profile cluster: username, avatar, light/dark theme
+
+Requested: in the header's top-right corner, show the user's username
+(falling back to their email if none is set), a minimalistic sun/moon
+theme switch, and a profile picture (a real Gmail picture if available,
+otherwise initials like "YN"); in Settings, add fields to set a
+username, a profile picture, and change password/confirm password.
+
+**Honest scope note on "profile pic as Gmail"**: this app has no
+Google sign-in — accounts are email + password only. There's no OAuth
+flow here to pull a real Gmail photo from automatically, and standing
+one up (Google Cloud OAuth credentials, a consent screen, a second
+login path) is a materially bigger, separate feature. What's built
+instead, and actually works today: upload any picture in Settings
+(stored in Vercel Blob, same mechanism documents already use), shown
+everywhere the avatar appears; with no picture uploaded, a colored
+circle with initials (from the username, or the email if no username
+is set) — this is the real, live default for every account right now,
+not a placeholder. Happy to build real Google sign-in as a follow-up
+if wanted.
+
+**Light/dark theme** — `ink-*` (surfaces) and `neutral-*` (text) in
+`tailwind.config.ts` now resolve to CSS variables (`globals.css`)
+instead of fixed hex, so one `data-theme` attribute swap re-colors
+every existing `bg-ink-*`/`border-ink-*`/`text-neutral-*` class across
+the whole app — no component had to change its classes one by one.
+Light isn't an auto-invert filter; it's a deliberate second palette in
+the same cool blue-gray hue, with each neutral text step re-paired to
+whichever step gives it the same relative contrast against a light
+background that it had against the dark one. One color was
+deliberately left out of this system: button text sitting on the
+saffron accent (`text-onaccent`, new, pinned near-black in both
+themes) — the accent itself doesn't change with theme, so its text
+shouldn't either; this used to double up with the page-background
+color (`ink-950`), which would have gone invisible on light-mode
+accent buttons once that shade started changing with theme.
+`ThemeToggle.tsx` just flips `data-theme` + a localStorage key; an
+inline script in `layout.tsx` applies the stored choice before first
+paint so there's no flash back to dark on reload.
+
+**Username & avatar** — `users` gained nullable `username` and
+`avatar_url` columns (no uniqueness constraint — it's a display label
+here, never used for login or lookup). `/api/account` (PATCH) sets the
+username; `/api/account/avatar` (POST/DELETE) uploads or clears the
+picture. `AppShell.tsx`'s header now shows the avatar + username (or
+email) linking to Settings; `Sidebar.tsx`'s footer shows the same
+instead of a bare email string, for consistency.
+
+**Settings page** — new Profile card (avatar upload/remove, username
+field) and Password card (current/new/confirm, server verifies the
+current password via bcrypt before accepting a new one) added above
+the existing account-info and sign-out cards.
+
+Syntax-checked clean, committed, pushed.

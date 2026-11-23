@@ -136,7 +136,19 @@ Next.js app (no GPU, no training framework in a serverless function).
 
 ---
 
-### 2.9 Dashboard layout
+### 2.9 Account: profile, avatar, theme
+`users.username` and `users.avatar_url` are optional — a username
+displays instead of the account's email wherever a name is shown (header,
+sidebar footer), and an avatar replaces the initials-circle default once
+uploaded. **There is no Google sign-in in this app**, so a profile picture
+is always one the user uploaded (Vercel Blob) — nothing here pulls a photo
+from Gmail automatically. Light/dark theme is a single `data-theme`
+attribute on `<html>`, toggled by `ThemeToggle.tsx` and persisted to
+localStorage; every surface/text color used by the authenticated app
+(`ink-*`, `neutral-*` in `tailwind.config.ts`) is a CSS variable swapped
+by that attribute, so no component needed theme-specific classes added.
+
+### 2.10 Dashboard layout
 A persistent sliding sidebar (`Sidebar.tsx` + `AppShell.tsx`) wraps every
 page: Home, Matrix, Documents, Telegram Connect, Settings, Evaluations, and
 Sign out. On desktop it pushes the page's content open/closed (normal flex

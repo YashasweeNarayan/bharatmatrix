@@ -1,16 +1,24 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { PanelLeftOpen } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import Avatar from "@/components/Avatar";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function AppShell({
   email,
+  username,
+  avatarUrl,
   children,
 }: {
   email: string;
+  username?: string | null;
+  avatarUrl?: string | null;
   children: ReactNode;
 }) {
+  const displayName = username || email;
   // Open by default — on a phone this still starts closed because the
   // drawer would otherwise cover the whole screen on first paint.
   const [open, setOpen] = useState(
@@ -19,7 +27,13 @@ export default function AppShell({
 
   return (
     <div className="bg-grain flex min-h-screen bg-ink-950">
-      <Sidebar email={email} open={open} onClose={() => setOpen(false)} />
+      <Sidebar
+        email={email}
+        username={username}
+        avatarUrl={avatarUrl}
+        open={open}
+        onClose={() => setOpen(false)}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 flex-shrink-0 items-center gap-3 border-b border-ink-700 bg-ink-950/85 px-4 backdrop-blur md:px-6">
@@ -43,6 +57,20 @@ export default function AppShell({
               BharatMatrix
             </span>
           )}
+
+          <div className="ml-auto flex items-center gap-3">
+            <ThemeToggle />
+            <Link
+              href="/settings"
+              title="Settings"
+              className="flex items-center gap-2 rounded-full border border-transparent py-1 pl-1 pr-1 transition-colors hover:border-ink-700 hover:bg-ink-800/60 sm:pr-3"
+            >
+              <Avatar name={displayName} avatarUrl={avatarUrl} size={26} />
+              <span className="hidden max-w-[160px] truncate text-[13px] text-neutral-300 sm:inline">
+                {displayName}
+              </span>
+            </Link>
+          </div>
         </header>
 
         <main className="mx-auto min-w-0 flex-1 px-4 py-8 md:px-8 lg:w-full lg:max-w-[1400px] lg:px-10">

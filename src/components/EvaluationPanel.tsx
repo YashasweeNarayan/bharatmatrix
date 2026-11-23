@@ -244,7 +244,7 @@ export default function EvaluationPanel({ onClose }: { onClose: () => void }) {
                       "flex items-center justify-center gap-1.5 self-start rounded-lg px-3.5 py-2 text-[12.5px] font-medium transition-colors",
                       adding || !newQuestion.trim() || !newExpected.trim()
                         ? "cursor-not-allowed bg-ink-800 text-neutral-600"
-                        : "bg-saffron-500 text-ink-950 hover:bg-saffron-400",
+                        : "bg-saffron-500 text-onaccent hover:bg-saffron-400",
                     )}
                   >
                     {adding ? (
@@ -292,7 +292,7 @@ export default function EvaluationPanel({ onClose }: { onClose: () => void }) {
                     "flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
                     anyActive
                       ? "cursor-not-allowed bg-ink-800 text-neutral-600"
-                      : "bg-saffron-500 text-ink-950 hover:bg-saffron-400",
+                      : "bg-saffron-500 text-onaccent hover:bg-saffron-400",
                   )}
                 >
                   {anyActive && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

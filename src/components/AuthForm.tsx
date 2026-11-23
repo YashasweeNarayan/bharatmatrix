@@ -107,7 +107,7 @@ export default function AuthForm({
         <button
           type="submit"
           disabled={submitting}
-          className="mt-1.5 flex items-center justify-center gap-2 rounded-full bg-saffron-500 px-5 py-2.5 text-[13px] font-medium text-ink-950 transition-colors hover:bg-saffron-400 disabled:opacity-60"
+          className="mt-1.5 flex items-center justify-center gap-2 rounded-full bg-saffron-500 px-5 py-2.5 text-[13px] font-medium text-onaccent transition-colors hover:bg-saffron-400 disabled:opacity-60"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {isSignup ? "Sign up" : "Log in"}

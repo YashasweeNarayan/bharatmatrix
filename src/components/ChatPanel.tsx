@@ -335,7 +335,7 @@ export default function ChatPanel({
               "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors",
               disabled || !question.trim() || anyLoading
                 ? "cursor-not-allowed bg-ink-800 text-neutral-600"
-                : "bg-saffron-500 text-ink-950 hover:bg-saffron-400",
+                : "bg-saffron-500 text-onaccent hover:bg-saffron-400",
             )}
           >
             {anyLoading ? (

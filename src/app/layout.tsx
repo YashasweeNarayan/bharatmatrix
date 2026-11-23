@@ -28,6 +28,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        {/*
+          Sets data-theme before the first paint so a returning visitor
+          who picked light mode never sees a flash of the dark default.
+          Runs as a blocking inline script (not a useEffect) specifically
+          to beat paint — this is the one place in the app a script tag
+          is the right tool instead of a React effect.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("bm-theme");if(t==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body
         className={`${manrope.variable} ${plexMono.variable} font-sans antialiased`}
       >
