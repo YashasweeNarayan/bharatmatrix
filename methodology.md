@@ -136,6 +136,24 @@ Next.js app (no GPU, no training framework in a serverless function).
 
 ---
 
+### 2.9 Dashboard layout
+A persistent sliding sidebar (`Sidebar.tsx` + `AppShell.tsx`) wraps every
+page: Home, Matrix, Documents, Telegram Connect, Settings, Evaluations, and
+Sign out. On desktop it pushes the page's content open/closed (normal flex
+flow — closing it collapses to zero width and the content beside it
+widens into the space, nothing is ever covered); on phone widths it
+becomes a fixed drawer with a backdrop instead, since three columns
+(sidebar + chat + documents) don't fit side by side that narrow.
+
+The Home page (`/workspace`, label "Home" in the sidebar) is a two-column
+dashboard: a Claude-style multi-turn chat thread (`ChatPanel.tsx`) in the
+center, and a compact document list/uploader (`DocumentsPanel.tsx`) on the
+right — the same component renders full-size on its own `/documents` page.
+Telegram's QR-linking card and the account Settings page are each their
+own dedicated route now rather than living inside Home.
+
+---
+
 ## 3. Tech stack
 
 Next.js 14 (App Router, TypeScript) · PostgreSQL + pgvector (HNSW index) ·

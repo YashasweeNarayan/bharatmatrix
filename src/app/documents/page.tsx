@@ -1,0 +1,38 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import AppShell from "@/components/AppShell";
+import DocumentsPanel from "@/components/DocumentsPanel";
+import { ensureSchema } from "@/lib/db";
+import { SESSION_COOKIE, getUserByToken } from "@/lib/auth";
+
+export const metadata = {
+  title: "Documents — BharatMatrix",
+};
+
+export default async function DocumentsPage() {
+  await ensureSchema();
+  const token = cookies().get(SESSION_COOKIE)?.value;
+  const user = await getUserByToken(token);
+  if (!user) {
+    redirect("/login?next=/documents");
+  }
+
+  return (
+    <AppShell email={user.email}>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
+          Documents
+        </h1>
+        <p className="mt-2 max-w-xl text-[14px] text-neutral-400">
+          Everything you&apos;ve uploaded — annual reports, investor decks,
+          audit reports. BharatMatrix reads each one page by page so every
+          answer can point back to exactly where it came from.
+        </p>
+      </div>
+
+      <div className="mt-8">
+        <DocumentsPanel />
+      </div>
+    </AppShell>
+  );
+}

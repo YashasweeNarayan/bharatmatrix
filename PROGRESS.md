@@ -1076,3 +1076,56 @@ disk here, and will be pushed in one go once the connection is live.
   exists, this just accumulates nightly snapshots for a human to feed
   into the training script manually on Colab. Syntax-checked clean,
   pushed (`c85ba73`).
+
+## 2026-11-24 — Dashboard redesign: sliding sidebar, center chat, Claude-style layout
+
+Requested: rebuild the main page as a proper dashboard — chat in the
+center (Claude-style conversation), documents on the right, and a
+sliding sidebar that *pushes* the rest of the layout open/closed
+instead of covering it, with nav items Home / Matrix / Documents /
+Telegram Connect / Settings / Evaluations / Sign out.
+
+**Sidebar (`Sidebar.tsx`, rewritten `AppShell.tsx`)** — on desktop
+(lg+) the sidebar sits in normal flex flow: closing it collapses its
+own width to zero and the content beside it widens to fill the row,
+so nothing the user was looking at ever disappears or gets covered.
+Below that width there's no room to push three columns (sidebar +
+chat + documents) without squeezing the chat into uselessness, so the
+sidebar becomes a fixed drawer with a dimming backdrop on phones
+instead — the one deliberate departure from "push," and only because
+it genuinely doesn't fit. Sign out moved from the old top header into
+the sidebar footer, next to the account email, per the requested nav
+list.
+
+**Chat (`ChatPanel.tsx`, replaces `AskPanel.tsx`)** — the old
+single-question/single-answer panel is now a real multi-turn thread:
+every question asked in a session stays visible above the next one
+(Claude-style), with the input pinned to the bottom of the chat card
+and the thread auto-scrolling to the newest turn. Each answer keeps
+its own independent "Move to Matrix" button, reranker-used badge, and
+citations — asking a question here still never adds it to the Matrix
+on its own, same opt-in behavior as before, just per-turn now instead
+of per-panel.
+
+**Documents (`DocumentsPanel.tsx`, replaces the doc-list half of
+`Workspace.tsx`)** — same upload/list/indexing logic as before
+(upload, drag-drop, embed-step draining, retry/remove, expand to
+preview extracted pages), now one component used two ways: `compact`
+on the Home dashboard's right rail next to the chat, and full-size on
+its own dedicated `/documents` page (new). Reports its document list
+back up to the Home page via a callback so the chat panel's ready
+count and citation filenames come from the same fetch instead of a
+second one.
+
+**New dedicated pages**: `/documents` (full document manager),
+`/telegram` (the existing `TelegramConnect` QR-linking card, now its
+own page instead of living inside Home), `/settings` (new — account
+email, member-since date, document count, Telegram-connected status,
+and sign out; reads `users.created_at` directly since nothing else in
+the app needed it before now).
+
+`/workspace` kept as the actual URL for "Home" — only the sidebar
+label changed — so the existing login/signup redirect-after-auth
+logic (`next=/workspace`) didn't need touching.
+
+Syntax-checked clean across every new/changed file, committed, pushed.
