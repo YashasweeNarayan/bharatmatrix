@@ -106,14 +106,35 @@ export default function AskPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: askedQuestion }),
       });
-      const data = await res.json();
+      // Read as text first, not res.json() directly — a non-JSON error
+      // page (a 500/504 from the platform itself, not from our own route
+      // handler) would otherwise throw inside this try block and get
+      // reported as "couldn't reach the server," which is misleading:
+      // the server WAS reached, it just didn't return what we expected.
+      const raw = await res.text();
+      let data: { error?: string; questionId?: string } | null = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        // Not JSON — surface the raw status/body instead of guessing.
+      }
+
       if (!res.ok) {
-        setMoveError(data.error ?? "Couldn't add this to the Matrix.");
+        setMoveError(
+          data?.error ?? `Request failed (${res.status}): ${raw.slice(0, 200)}`,
+        );
+      } else if (!data) {
+        setMoveError(
+          `Unexpected response (${res.status}, not JSON): ${raw.slice(0, 200)}`,
+        );
       } else {
         setMovedToMatrix(true);
       }
-    } catch {
-      setMoveError("Couldn't reach the server.");
+    } catch (err) {
+      // A genuine network-level failure — fetch() itself never completed.
+      setMoveError(
+        `Couldn't reach the server: ${err instanceof Error ? err.message : String(err)}`,
+      );
     } finally {
       setMovingToMatrix(false);
     }
