@@ -200,7 +200,14 @@ Tailwind CSS.
   2. `cross-encoder/download_feedback.mjs` — pulls every nightly
      `rerank_feedback` export (§2.8) out of Blob (the real-usage half).
   3. `cross-encoder/combine_and_split.py` — merges both into
-     deduplicated `train.jsonl`/`val.jsonl`.
+     deduplicated `train.jsonl`/`val.jsonl`, split by question (no
+     question on both sides). Optionally mixes in public finance-QA data
+     (training side only, capped at 3x own rows; validation is always
+     the project's own data) built by `cross-encoder/build_public_dataset.py`
+     from FinQA (CC BY 4.0) and optionally TAT-QA (CC BY 4.0). Sources
+     considered/excluded and their licences: `cross-encoder/DATASETS.md`.
+     All usable public data is US filings — it teaches the task, not
+     Indian-report vocabulary; that comes from the app's own documents.
   4. `cross-encoder/train.ipynb` (Colab, free GPU) — fine-tunes
      `cross-encoder/ms-marco-MiniLM-L-6-v2` (~22M params) on that data
      and pushes the result to the Hugging Face Hub. Honest framing:
@@ -208,10 +215,17 @@ Tailwind CSS.
      from random weights — the latter needs far more data/compute than
      a free GPU session gives you, and fine-tuning your own domain data
      into an existing small model is the real, standard way a project
-     this size ends up with "its own" model.
+     this size ends up with "its own" model. The notebook reports
+     Recall@1/MRR before and after fine-tuning on the project's own
+     validation set and on a held-out public test set, so "did it help"
+     is a measured number, not an assumption.
   5. `cross-encoder/serve/` — a FastAPI app implementing
      `rerankWithCrossEncoder()`'s exact contract, ready to deploy as a
-     Hugging Face Space (Docker SDK, free CPU tier).
+     Hugging Face Space (Docker SDK, free CPU tier). Scores only the first
+     `MAX_RERANK` (40) of the app's ~120 candidates and caps tokens at
+     256, to stay inside the app's 2.5s budget; real latency on the free
+     tier has NOT been measured — responses carry `scored`/`ms` so it can
+     be checked after deploy.
   6. Set `CROSS_ENCODER_URL` to the Space's URL in Vercel — nothing else
      in the app changes; `rerankWithFallback()` starts trying it
      immediately and falls back to Gemini exactly as it already does

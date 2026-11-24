@@ -1263,3 +1263,54 @@ needed to change for this.
 methodology.md §4.2 updated to point at this; nothing here touches the
 deployed Next.js app itself, so no redeploy needed from this commit —
 only from setting `CROSS_ENCODER_URL` once a model exists.
+
+## 2026-11-24 — Cross-checked the cross-encoder setup, fixed 3 bugs, added public training data
+
+Asked to verify the cross-encoder scaffolding and find public data to
+train on. **Limit up front:** this sandbox has no PyPI and cannot reach
+Hugging Face or GitHub raw files, so torch / sentence-transformers code
+could not be executed here. What I could do was syntax-check everything,
+unit-test the pure-Python logic, and test the dataset converters against
+small fake files shaped like the documented formats. The notebook and the
+Space have never been run end to end.
+
+**Bugs I found in my own earlier work (all fixed):**
+1. *Serving would have rejected real traffic.* `serve/app.py` capped
+   requests at 50 passages, but the app's candidate pool after fusion can
+   be ~120. That would have been an HTTP 422 on essentially every
+   request, which the app treats as "cross-encoder down", so it would
+   have fallen back to Gemini forever while looking deployed. Now it
+   accepts up to 300, scores only the first `MAX_RERANK` (40, RRF order)
+   and appends the unscored tail (`serve/ranking.py`, unit-tested). Also
+   `MAX_LENGTH` 256 (was the model default) and responses report
+   `scored`/`ms`. Latency on a free CPU Space is still unmeasured.
+2. *Dockerfile ran as root.* Hugging Face runs Spaces as uid 1000, so the
+   model baked in at build time would not have been readable at runtime.
+   Rewritten to the pattern in HF's Docker docs (user 1000, `--chown`).
+3. *Validation leakage in `combine_and_split.py`.* It shuffled rows, but
+   each question has several rows (1 positive + negatives), so the same
+   question could land in both train and val and inflate validation
+   scores. Now splits by question.
+Plus: the notebook used `model.save_to_hub`, which I couldn't confirm
+exists in the pinned library; replaced with `huggingface_hub.upload_folder`.
+It also kept the last-epoch weights instead of the saved best checkpoint;
+it now reloads from disk before evaluating/uploading, and uses
+`max_length=256` to match the server.
+
+**Added:**
+- `build_public_dataset.py` — FinQA (CC BY 4.0, default) and TAT-QA
+  (CC BY 4.0, opt-in) → `{question, passage, label}` with ≤900-char
+  chunks, hard (same-report) + easy negatives. FinQA's test split goes to
+  `public_test.jsonl` and is never trained on. It self-checks its reading
+  of FinQA's evidence indexes and warns if they don't match.
+  **Tested only on fake fixtures, not on the real downloads.**
+- `combine_and_split.py --public --public-ratio` (public rows go to train
+  only, capped at 3x own rows; val stays 100% own data).
+- Notebook: Recall@1 / MRR on `val` and `public_test`, before vs after.
+- `DATASETS.md`: what was considered and why. Excluded: IndFin-Bench
+  (training prohibited, no evidence passages); FinDER (non-commercial,
+  by request); FiQA and `mteb/FinQARetrieval` are test-only. The
+  financial-qa-10K licence was not readable to me, so it is opt-in.
+- Honest gap: all usable public data is US filings, nothing Indian.
+
+No change to the deployed Next.js app; no redeploy needed.

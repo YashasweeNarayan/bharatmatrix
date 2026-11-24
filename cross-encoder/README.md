@@ -17,8 +17,9 @@ rather than something run automatically.
 
 ```
  generate_synthetic_data.py ──┐
-                               ├──> combine_and_split.py ──> train.jsonl, val.jsonl
-   download_feedback.mjs  ────┘                                     │
+   download_feedback.mjs  ────┼──> combine_and_split.py ──> train.jsonl, val.jsonl
+ build_public_dataset.py ─────┘      (public data: train only)       │
+   (optional; also writes public_test.jsonl)                         │
                                                                      v
                                                               train.ipynb (Colab)
                                                                      │
@@ -62,27 +63,48 @@ but-not-cited chunks as negatives (see `src/lib/feedback.ts`), exported
 nightly by Vercel Cron. It'll be empty/small until the app has had real
 use; that's fine, run step 1 alone until then.
 
+### 2b. Add public finance-QA data (optional, recommended while your own data is small)
+
+```bash
+python build_public_dataset.py                 # FinQA only (CC BY 4.0)
+python build_public_dataset.py --include-tatqa # + TAT-QA (CC BY 4.0)
+```
+
+Downloads FinQA from GitHub on your machine (the build sandbox I work in
+cannot reach it, so **this script has been tested only on small fake files
+that mimic the documented format, never on the real download** — read its
+printed skip counts and the "index self-check" line; it warns loudly if
+its reading of FinQA's evidence indexes looks wrong). It writes
+`public_train.jsonl` and `public_test.jsonl` (FinQA's *test* split, never
+trained on). What each source is, its licence, and what was deliberately
+left out is in `DATASETS.md`. These are US filings: they teach the
+*skill* of finding the answering passage, not Indian-report vocabulary.
+
 ### 3. Combine into train/val splits
 
 ```bash
-python combine_and_split.py --synthetic synthetic.jsonl --feedback feedback.jsonl
+python combine_and_split.py --synthetic synthetic.jsonl --feedback feedback.jsonl \
+    --public public_train.jsonl --public-ratio 3.0     # --public lines optional
 ```
 
-Prints how many pairs you ended up with and the synthetic/real split —
-worth actually reading before you spend a Colab session on it.
+Prints how many pairs you ended up with and the own/public split — worth
+actually reading before you spend a Colab session on it. Validation is
+always your own data (never public), and the split is by question so no
+question appears on both sides.
 
 ### 4. Fine-tune in Colab
 
 Upload `train.ipynb` to https://colab.research.google.com (File → Upload
 notebook), switch to a GPU runtime, and run it top to bottom — it'll ask
-you to upload `train.jsonl`/`val.jsonl` partway through, then walks
+you to upload `train.jsonl`/`val.jsonl` (and `public_test.jsonl` if you built it) partway through, measures ranking quality (Recall@1 / MRR) before training, then walks
 through fine-tuning `cross-encoder/ms-marco-MiniLM-L-6-v2` on them and
-pushing the result to your Hugging Face account.
+re-measures with the best saved checkpoint so you can see whether it
+really improved, and pushes the result to your Hugging Face account.
 
 ### 5. Deploy the model behind an API
 
 Follow `serve/README.md` — create a Hugging Face Space (Docker SDK),
-upload the four files in `serve/`, point its `MODEL_PATH` variable at
+upload the five files in `serve/`, point its `MODEL_PATH` variable at
 the model you just pushed.
 
 ### 6. Wire it into the app
