@@ -1467,3 +1467,8 @@ big centred CTA, minimal footer. The cube is pure CSS 3D (`WireCube.tsx`) so no
 three.js/npm packages were added, and it follows the light/dark theme.
 Kept our own content (what it does, security, Telegram, contact) and our
 tokens/fonts. Not built or viewed in a browser here — check it on Vercel.
+- Correction (same day): the restyle above changed more than asked. Reverted the
+  landing page to the previous version (original fonts, layout and sections) and
+  added ONLY the template's block: its three stacked boxes (the template's
+  LOGO_VARIANT 1, same proportions), turning slowly behind the hero, as CSS 3D
+  (`StackedCube.tsx`). Removed WireCube and the hatch styles.
