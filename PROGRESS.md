@@ -1375,3 +1375,16 @@ So: small real gain on general finance QA, nothing shown for Indian-style text.
 Next: more own-data (PDFs -> synthetic pairs, feedback) and a larger val set.
 Security note: an HF token and a Kaggle HF_TOKEN were created for this and the
 first was pasted in chat; both should be deleted.
+
+## 2026-11-25 — Automatic monthly retraining (GitHub Actions) added, untested
+
+`.github/workflows/retrain.yml` + `cross-encoder/retrain.py` + `retrain_gate.py`.
+Monthly (and manual) run: feedback + synthetic + public data -> combine -> train
+-> compare against whatever the Space currently serves -> promote only if the
+gate passes (own val >= 50 questions, MRR +0.01 on own val, no regression on
+public/handmade). Manual runs are dry runs unless "promote" is ticked.
+The gate logic was unit-tested here; the training/upload/Space-switch code and
+the workflow itself have NEVER been run (no torch, no HF, no GitHub Actions
+here). CPU training time on GitHub runners is unmeasured. Added `--quiet` to
+generate_synthetic_data.py so CI logs on a public repo don't print question text.
+Needs 4 repo secrets: DATABASE_URL, GEMINI_API_KEY, BLOB_READ_WRITE_TOKEN, HF_TOKEN.

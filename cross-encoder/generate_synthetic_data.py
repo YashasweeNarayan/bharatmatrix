@@ -107,7 +107,7 @@ def call_gemini(api_key: str, passage: str, retries: int = 3) -> str | None:
             if e.code == 429 and attempt < retries - 1:
                 time.sleep(5 * (attempt + 1))
                 continue
-            print(f"  [gemini error {e.code}] {e.read()[:200]}", file=sys.stderr)
+            print(f"  [gemini error {e.code}]", file=sys.stderr)
             return None
         except Exception as e:  # noqa: BLE001 — this is a one-shot script, log and move on
             print(f"  [gemini error] {e}", file=sys.stderr)
@@ -122,6 +122,8 @@ def main() -> None:
     parser.add_argument("--db-url", default=os.environ.get("DATABASE_URL"))
     parser.add_argument("--api-key", default=os.environ.get("GEMINI_API_KEY"))
     parser.add_argument("--sleep", type=float, default=1.2, help="Seconds between Gemini calls (free-tier rate limit)")
+    parser.add_argument("--quiet", action="store_true",
+                        help="don't print generated questions (use in CI: public repos have public logs)")
     args = parser.parse_args()
 
     if not args.db_url:
@@ -167,7 +169,7 @@ def main() -> None:
             if not question:
                 print("skipped (no question generated)")
                 continue
-            print(f'"{question[:70]}"')
+            print("ok" if args.quiet else f'"{question[:70]}"')
 
             f.write(json.dumps({"question": question, "passage": content, "label": 1}) + "\n")
             written += 1

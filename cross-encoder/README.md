@@ -115,6 +115,33 @@ starts trying it on every request from then on, falling back to the
 Gemini reranker exactly as it already does today whenever the Space is
 asleep or slow — nothing else in the app needs to change.
 
+## Automatic retraining (GitHub Actions)
+
+`.github/workflows/retrain.yml` re-runs the whole pipeline on the 1st of every month
+at 03:17 UTC (and on demand): pull feedback, generate synthetic pairs, build public
+data, combine, train, then **compare the new model with the one the Space serves**.
+`retrain_gate.py` promotes the new model only if it passes every rule:
+- your own validation set has at least 50 questions (otherwise it never promotes),
+- MRR on your own validation set improves by at least 0.01,
+- no regression on the public test set (more than 0.005) or the hand-made set (more than 0.02).
+
+If it promotes, it uploads to `<you>/bharatmatrix-cross-encoder-auto`, sets the Space's
+`MODEL_PATH` to it and restarts the Space. The old model is never deleted: roll back by
+setting `MODEL_PATH` back. Otherwise nothing changes and the result is in the run's summary.
+
+**One-time setup**
+1. GitHub repo → Settings → Secrets and variables → Actions → New repository secret. Add four:
+   `DATABASE_URL`, `GEMINI_API_KEY`, `BLOB_READ_WRITE_TOKEN`, `HF_TOKEN` (a *Write* token).
+2. Actions tab → "Retrain cross-encoder" → Run workflow. Leave "promote" unticked for the
+   first run (dry run), and read the summary.
+3. When the dry run looks sensible, later monthly runs are allowed to promote on their own.
+
+**Limits (unmeasured / unverified):** never run end to end; the first run may need fixes.
+GitHub's runners have no GPU, so training runs on CPU (time unknown; the job times out at
+5 hours). Logs of a public repo are public: the scripts print counts and scores only,
+never document text. The gate is only as good as its test sets: with little own data it
+will mostly answer "not enough validation data".
+
 ## More data
 
 See `HOW_TO_TRAIN_MORE.md` — hand-made Indian-style test documents and questions are in `sample-data/` (`QUESTIONS.md`), converted to rows with `qa_to_training.py`.
