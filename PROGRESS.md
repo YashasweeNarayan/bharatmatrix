@@ -1327,3 +1327,9 @@ run against a live Space — written from the documented protocol. The
 earlier FastAPI-mount idea was dropped as unsupported on ZeroGPU. Unknowns:
 ZeroGPU CPU speed and whether the dummy-decorator trick passes its startup
 check; the Space logs will say.
+
+- Space build failed (ResolutionImpossible on huggingface-hub): my
+  `sentence-transformers>=3.3,<4` pin capped huggingface-hub below what the
+  Space's Gradio 6.32 needs. Pin removed from serve-gradio/requirements.txt.
+  Newer sentence-transformers may behave slightly differently (e.g. applies a
+  sigmoid to scores) — ranking order is unaffected. Untested on a live Space.
