@@ -16,6 +16,8 @@ export function middleware(req: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const dev = process.env.NODE_ENV !== "production";
 
+  const enforce = process.env.CSP_ENFORCE === "true";
+
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
@@ -29,13 +31,13 @@ export function middleware(req: NextRequest) {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    "upgrade-insecure-requests",
+    // Browsers ignore this one (and warn) in report-only mode.
+    ...(enforce ? ["upgrade-insecure-requests"] : []),
   ].join("; ");
 
-  const headerName =
-    process.env.CSP_ENFORCE === "true"
-      ? "Content-Security-Policy"
-      : "Content-Security-Policy-Report-Only";
+  const headerName = enforce
+    ? "Content-Security-Policy"
+    : "Content-Security-Policy-Report-Only";
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
