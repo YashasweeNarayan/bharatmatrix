@@ -15,7 +15,7 @@ export default async function Page() {
       isAdmin
     >
       <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">User History</h1>
-      <p className="mt-2 max-w-xl text-[14px] text-neutral-400">Every user's conversations. Answers and quoted passages are shown; file names and files are not.</p>
+      <p className="mt-2 max-w-xl text-[14px] text-neutral-400">Every user&apos;s conversations. Answers and quoted passages are shown; file names and files are not.</p>
       <div className="mt-6">
         <AdminHistory />
       </div>
