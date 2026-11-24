@@ -1356,3 +1356,22 @@ The 10 earlier evaluation PDFs and their questions are copied to
   CrossEncoder("") loaded nothing and every request raised. App fell back to
   Gemini meanwhile. Fixed with `os.environ.get(...) or default`; default now
   points at the -v2 model.
+
+## 2026-11-25 — Cross-encoder v2 live in the app
+
+Trained on Kaggle (own PyTorch loop; the old sentence-transformers trainer broke
+on Kaggle's Python 3.13 image from mixed library versions), uploaded to
+`yashaswee22/bharatmatrix-cross-encoder-v2` (file-by-file, because
+`upload_folder` was broken in that session), and switched the Space to it.
+Confirmed: Space logs show the v2 model loading; the test form returns
+`rankedIndexes [0, 1]` in ~73 ms; the app logged `reranked 37/37 passages in
+196ms` earlier on v1.
+
+Results (base -> v2): public_test (500 q) Recall@1 0.860 -> 0.888, MRR
+0.926 -> 0.943; handmade Indian-style (48 q) 0.896 -> 0.875, MRR 0.944 -> 0.934
+(noise); own-data val only 10 questions (1.000 both) — uninformative. The
+saved checkpoint is epoch 1 (val was saturated, so "best" never moved).
+So: small real gain on general finance QA, nothing shown for Indian-style text.
+Next: more own-data (PDFs -> synthetic pairs, feedback) and a larger val set.
+Security note: an HF token and a Kaggle HF_TOKEN were created for this and the
+first was pasted in chat; both should be deleted.

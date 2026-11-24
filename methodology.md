@@ -182,7 +182,30 @@ Tailwind CSS.
   create the bot via @BotFather and set the three env vars +
   `setWebhook` call. Nothing left to build; this is operational setup.
 
-### 4.2 Next up (scaffolded, waiting on your own Colab/HF accounts)
+### 4.2 Cross-encoder reranker: LIVE (v2), with honest limits
+**Status (2026-11-25):** a fine-tuned cross-encoder (`yashaswee22/bharatmatrix-cross-encoder-v2`,
+fine-tuned from `cross-encoder/ms-marco-MiniLM-L-6-v2`, epoch-1 checkpoint) is served from a
+free Hugging Face Gradio/ZeroGPU Space (CPU inference, `serve-gradio/`) and used as the
+primary reranker via `CROSS_ENCODER_URL` + `CROSS_ENCODER_MODE=gradio`; Gemini remains the
+fallback when the Space is asleep or slow. Observed rerank time in the app: ~200 ms for
+37 passages.
+
+**Measured quality (Recall@1 / MRR, base -> v2):**
+- Held-out public test, 500 questions (FinQA test split): 0.860 / 0.926 -> 0.888 / 0.943.
+  A small gain; no significance test was run.
+- Hand-made Indian-style test, 48 questions (fictional documents): 0.896 / 0.944 ->
+  0.875 / 0.934. Within noise (one question). No evidence of improvement on Indian-style text.
+- Own-data validation: only 10 questions (30 pairs); both models scored 1.000. Not informative.
+
+**Main limitation:** training data was mostly public US-filing data (FinQA, TAT-QA) plus a
+small amount of synthetic data from the app's own documents (1,103 training pairs in total).
+Next real gain: upload more Indian-style PDFs, generate far more synthetic pairs, add real
+usage feedback, retrain (see `cross-encoder/HOW_TO_TRAIN_MORE.md`).
+
+**Operational caveats:** free Spaces sleep when idle (first request falls back to Gemini);
+a Space variable `MODEL_PATH` that exists but is empty used to break loading (fixed in code).
+
+**Original scaffolding notes (still accurate for reruns):**
 - **Train and deploy a real tiny cross-encoder reranker** to replace the
   Gemini-as-reranker fallback as the *primary* path (Gemini stays as the
   fallback when the cross-encoder is slow/unavailable — this fallback
