@@ -1,0 +1,41 @@
+Kaveri Textiles Limited
+
+Unaudited Standalone Financial Results for the Quarter and Half Year ended 30 September 2026
+
+Statement under Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015. All amounts are in ₹ crore unless stated otherwise. Kaveri Textiles Limited is a fictional company created for software testing.
+
+Statement of profit and loss
+
+Particulars | Q2 FY27 | Q1 FY27 | Q2 FY26
+Revenue from operations | 1,284.6 | 1,196.2 | 1,102.4
+Other income | 18.3 | 14.9 | 12.1
+Total income | 1,302.9 | 1,211.1 | 1,114.5
+Cost of materials consumed | 702.8 | 668.4 | 612.9
+Employee benefit expense | 148.6 | 144.1 | 131.7
+Finance costs | 41.2 | 43.5 | 47.8
+Depreciation and amortisation | 52.4 | 51.0 | 48.3
+Other expenses | 214.3 | 201.6 | 188.0
+Total expenses | 1,159.3 | 1,108.6 | 1,028.7
+Profit before tax | 143.6 | 102.5 | 85.8
+Tax expense | 36.1 | 25.8 | 21.6
+Profit after tax | 107.5 | 76.7 | 64.2
+Basic EPS (₹, face value ₹10) | 10.75 | 7.67 | 6.42
+
+Segment revenue for Q2 FY27
+
+Segment | Revenue (₹ crore)
+Yarn | 612.4
+Fabrics | 498.7
+Home textiles | 173.5
+
+Notes
+
+The Board of Directors declared an interim dividend of ₹2.50 per equity share (25% of face value) for FY2026-27, with a record date of 14 November 2026.
+
+Exports contributed 41% of revenue from operations in Q2 FY27, mainly to the United States and the European Union.
+
+Net debt stood at ₹1,084 crore as at 30 September 2026, compared with ₹1,162 crore as at 31 March 2026.
+
+Capital expenditure in the first half was ₹96 crore, mostly for a spinning line expansion at the Erode unit that adds 38,000 spindles.
+
+The statutory auditors carried out a limited review of these results and expressed an unmodified conclusion.

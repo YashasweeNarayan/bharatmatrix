@@ -1,0 +1,44 @@
+Himalaya Housing Finance Limited
+
+Annual Report FY2025-26: Management Discussion and Financial Highlights
+
+Himalaya Housing Finance Limited is a fictional housing finance company created for software testing. All amounts are in ₹ crore unless stated otherwise.
+
+Business performance
+
+Assets under management grew 21% to ₹18,420 crore as at 31 March 2026, from ₹15,223 crore a year earlier.
+
+Disbursements during FY2025-26 were ₹6,240 crore, and the company served 1,42,000 active borrowers through 214 branches across 11 states.
+
+Net interest income was ₹812 crore and the net interest margin was 4.1% on average assets; the cost-to-income ratio was 31.4%.
+
+Profit after tax rose 24% to ₹486 crore from ₹392 crore in FY2024-25, and the Board recommended a dividend of ₹6 per equity share.
+
+Asset quality and Ind AS 109 provisioning
+
+Gross non-performing assets (Stage 3) were 1.38% of loans and net non-performing assets were 0.71% as at 31 March 2026.
+
+Stage (Ind AS 109) | Loan assets (₹ crore) | ECL provision (₹ crore)
+Stage 1 | 17,214 | 52
+Stage 2 | 952 | 120
+Stage 3 | 254 | 126
+Total | 18,420 | 298
+
+The provision coverage ratio on Stage 3 assets was 49.6%. Expected credit loss is estimated under Ind AS 109 using probability of default, loss given default and exposure at default.
+
+Capital and funding
+
+The capital adequacy ratio (CRAR) was 24.8% against the regulatory minimum of 15%, of which Tier I capital was 23.9%.
+
+Source of borrowings | Share of total
+Bank term loans | 46%
+Non-convertible debentures | 22%
+National Housing Bank refinance | 14%
+Securitisation and direct assignment | 12%
+Commercial paper | 6%
+
+The weighted average cost of borrowings was 7.82% during the year.
+
+Risk factors
+
+Himachal Pradesh and Uttarakhand together account for 38% of assets under management, so a regional slowdown or a natural disaster in these hill states could affect collections.

@@ -1,0 +1,38 @@
+Sagar Pharmaceuticals Limited
+
+Qualified Institutions Placement: Summary of Key Terms
+
+This summary describes a fictional qualified institutions placement under Chapter VI of the SEBI (Issue of Capital and Disclosure Requirements) Regulations, 2018, created for software testing. It is not an offer of securities.
+
+Issue terms
+
+Term | Detail
+Issue size | Up to ₹1,200 crore
+Face value | ₹5 per equity share
+Floor price | ₹1,462.50 per equity share
+Discount permitted | Up to 5% on the floor price
+Minimum issue price after discount | ₹1,389.38 per equity share
+Issue opens | 9 November 2026
+Lead managers | Kalinga Securities Limited and Sutlej Capital Markets Limited
+
+At the floor price, the company would issue approximately 82.05 lakh equity shares, which is about 3.4% of the post-issue paid-up capital of 24.13 crore shares.
+
+Promoter shareholding would decrease from 54.2% before the issue to about 52.4% after the issue, because promoters are not participating.
+
+Use of proceeds
+
+Purpose | Amount (₹ crore)
+Repayment or prepayment of borrowings | 620
+Capital expenditure for a new API plant at Visakhapatnam | 380
+General corporate purposes | 200
+Total | 1,200
+
+Investor eligibility and lock-in
+
+Allotment is made only to qualified institutional buyers. If the issue size is more than ₹250 crore, there must be at least five allottees, and no single allottee may receive more than 50% of the issue.
+
+The equity shares allotted cannot be sold for one year from the date of allotment, except on a recognised stock exchange.
+
+Risk factors
+
+The US Food and Drug Administration issued a Form 483 with four observations after inspecting the Baddi manufacturing plant in August 2026; an adverse outcome could delay product approvals for the United States market.

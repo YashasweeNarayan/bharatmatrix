@@ -1333,3 +1333,19 @@ check; the Space logs will say.
   Space's Gradio 6.32 needs. Pin removed from serve-gradio/requirements.txt.
   Newer sentence-transformers may behave slightly differently (e.g. applies a
   sigmoid to scores) — ranking order is unaffected. Untested on a live Space.
+
+## 2026-11-24 — Hand-made Indian-style documents and Q&A (cross-encoder/sample-data/)
+
+Five fictional PDFs (₹ crore, Ind AS 109, SEBI LODR/ICDR, a credit-rating
+rationale, a QIP term sheet) with 46 questions + 2 cross-document questions
+and answers, each answer tied to an exact quoted evidence sentence. I
+checked every evidence string against both the text and the rendered PDF,
+and re-derived the arithmetic (sums, margins, growth rates). One deliberate
+discrepancy (Kaveri revenue ₹1,284.6 vs ₹1,248.6 crore) and one negative
+control are included for the contradiction feature. `qa_to_training.py`
+converts these into training rows (189 rows from the 48 questions); the
+notebook now also reports Recall@1/MRR on `handmade_test.jsonl`.
+Everything is fictional; ~190 rows is a test set, not enough to move the
+model by itself. `HOW_TO_TRAIN_MORE.md` lists six ways to add data.
+The 10 earlier evaluation PDFs and their questions are copied to
+`sample-data/existing-10/` (questions only; they have no evidence spans).

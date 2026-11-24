@@ -1,0 +1,35 @@
+Arvalli Credit Ratings (fictional agency)
+
+Rating Rationale: Deccan Power and Infra Limited
+
+Arvalli Credit Ratings has upgraded the rating on the ₹2,500 crore non-convertible debenture programme of Deccan Power and Infra Limited to AA-/Stable from A+/Positive. Both the agency and the company are fictional and were created for software testing.
+
+Key rating drivers
+
+Installed capacity is 3,200 MW, made up of 1,800 MW of thermal, 900 MW of solar and 500 MW of wind capacity, so renewables account for 44% of capacity.
+
+The thermal plant load factor was 74% in FY2025-26.
+
+About 62% of revenue comes from three state distribution companies, which concentrates counterparty risk.
+
+Receivable days improved to 96 days from 124 days a year earlier after the state companies cleared old dues under a late payment surcharge scheme.
+
+Financial profile
+
+Metric | FY2025-26
+Revenue | ₹7,480 crore
+EBITDA | ₹3,180 crore
+EBITDA margin | 42.5%
+Total debt | ₹11,640 crore
+Net debt | ₹11,450 crore
+Net debt to EBITDA | 3.6x
+Debt service coverage ratio (DSCR) | 1.52x
+Interest coverage | 2.9x
+
+A capital expenditure programme of ₹4,800 crore is planned over FY2026-27 to FY2028-29, to be funded in a 70:30 debt to equity ratio.
+
+Rating sensitivities
+
+The rating could be upgraded if net debt to EBITDA falls below 3.0x on a sustained basis.
+
+The rating could be downgraded if the DSCR falls below 1.25x or if receivable days rise above 120 days.

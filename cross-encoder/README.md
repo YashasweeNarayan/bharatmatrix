@@ -115,6 +115,10 @@ starts trying it on every request from then on, falling back to the
 Gemini reranker exactly as it already does today whenever the Space is
 asleep or slow — nothing else in the app needs to change.
 
+## More data
+
+See `HOW_TO_TRAIN_MORE.md` — hand-made Indian-style test documents and questions are in `sample-data/` (`QUESTIONS.md`), converted to rows with `qa_to_training.py`.
+
 ## Re-training later
 
 Once `CROSS_ENCODER_URL` is live, real usage keeps feeding
