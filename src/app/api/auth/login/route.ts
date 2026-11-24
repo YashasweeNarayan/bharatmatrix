@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
-import { createSession, setSessionCookie, verifyPassword } from "@/lib/auth";
+import {
+  burnPasswordCheck,
+  createSession,
+  isAdminEmail,
+  setSessionCookie,
+  verifyPassword,
+} from "@/lib/auth";
+import { sameOrigin } from "@/lib/security";
+import {
+  buildLimits,
+  clearAttempts,
+  isLimited,
+  limitedResponse,
+  recordAttempt,
+} from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -10,6 +24,9 @@ export const runtime = "nodejs";
 const INVALID = "Incorrect email or password.";
 
 export async function POST(req: NextRequest) {
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Bad request." }, { status: 403 });
+  }
   await ensureSchema();
 
   const body = await req.json().catch(() => null);
@@ -17,23 +34,33 @@ export async function POST(req: NextRequest) {
     typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body?.password === "string" ? body.password : "";
 
-  if (!email || !password) {
+  const limits = buildLimits("login", req, email);
+  if (await isLimited(limits)) return limitedResponse();
+
+  if (!email || !password || password.length > 200) {
     return NextResponse.json({ error: INVALID }, { status: 401 });
   }
 
   const rows = await sql`
-    select id, email, password_hash from users where email = ${email}
+    select id, email, password_hash, role from users where email = ${email}
   `;
-  if (rows.length === 0) {
+  // Admin accounts sign in only through /admin/login, so an admin email
+  // here is treated exactly like an unknown one.
+  const user = rows[0];
+  const adminAccount = user && (user.role === "admin" || isAdminEmail(email));
+  if (!user || adminAccount || !user.password_hash) {
+    await burnPasswordCheck(password);
+    await recordAttempt(limits);
     return NextResponse.json({ error: INVALID }, { status: 401 });
   }
 
-  const user = rows[0];
   const ok = await verifyPassword(password, user.password_hash as string);
   if (!ok) {
+    await recordAttempt(limits);
     return NextResponse.json({ error: INVALID }, { status: 401 });
   }
 
+  await clearAttempts(limits.slice(0, 1));
   const { token, expiresAt } = await createSession(user.id as string);
   const res = NextResponse.json({ user: { id: user.id, email: user.email } });
   setSessionCookie(res, token, expiresAt);

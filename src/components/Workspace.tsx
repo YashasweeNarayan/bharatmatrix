@@ -11,14 +11,22 @@ import DocumentsPanel, { type DocumentRow } from "@/components/DocumentsPanel";
  * side without squeezing the chat unusably, so documents drop below
  * the chat instead of sharing the row.
  */
-export default function Workspace() {
+export default function Workspace({
+  conversationId = null,
+}: {
+  conversationId?: string | null;
+}) {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const readyCount = docs.filter((d) => d.status === "ready").length;
   const filenameById = Object.fromEntries(docs.map((d) => [d.id, d.filename]));
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
-      <ChatPanel readyCount={readyCount} filenameById={filenameById} />
+      <ChatPanel
+        readyCount={readyCount}
+        filenameById={filenameById}
+        conversationId={conversationId}
+      />
       <DocumentsPanel compact onDocsChange={setDocs} />
     </div>
   );

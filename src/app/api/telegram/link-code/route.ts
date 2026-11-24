@@ -30,6 +30,13 @@ export async function POST(req: NextRequest) {
     throw err;
   }
 
+  if (user.role === "admin") {
+    return NextResponse.json(
+      { error: "Admin accounts can't use the assistant." },
+      { status: 403 },
+    );
+  }
+
   // 6 bytes of randomness as 8 base32-ish characters is plenty for a
   // code that's only ever valid for 10 minutes and single-use.
   const code = randomBytes(6).toString("hex");

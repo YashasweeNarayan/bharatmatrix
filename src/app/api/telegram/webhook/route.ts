@@ -1,3 +1,4 @@
+import { saveChatTurn } from "@/lib/history";
 import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
 import { embedText, answerFromContext } from "@/lib/gemini";
@@ -161,6 +162,27 @@ async function handleQuestion(chatId: number, question: string): Promise<void> {
 
   const analystResult = await answerFromContext(question, context);
   const result = verifyGrounding(analystResult, context);
+
+  // Save under History: reuse this chat's thread if it was active in the
+  // last 6 hours, otherwise start a new one.
+  const [recent] = await sql`
+    select id from chat_conversations
+    where user_id = ${userId} and channel = 'telegram'
+      and updated_at > now() - interval '6 hours'
+    order by updated_at desc limit 1
+  `;
+  await saveChatTurn(
+    userId,
+    recent?.id,
+    {
+      question,
+      answer: result.answer,
+      grounded: result.grounded,
+      citations: result.citations,
+      reranker: null,
+    },
+    "telegram",
+  ).catch((e) => console.warn("[telegram] save turn failed:", e));
 
   const filenameById = new Map(
     context.map((c) => [c.documentId, c.filename] as const),

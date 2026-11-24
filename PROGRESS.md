@@ -1391,3 +1391,51 @@ Needs 4 repo secrets: DATABASE_URL, GEMINI_API_KEY, BLOB_READ_WRITE_TOKEN, HF_TO
 - Retraining schedule changed from monthly to weekly (Mondays 03:17 UTC / 08:47 IST).
   Note: weekly runs use ~one GitHub runner session each; the gate still blocks
   promotion until the own-data validation set has >= 50 questions.
+
+## 2026-11-25 — Admin login, user history, two-admin file lock, auth hardening (NOT built or run)
+
+Written in a sandbox with no node_modules: Vercel does the first real build.
+Verified here: pure logic by unit test (vault rule, date grouping, safe
+redirects, password rules, Google id_token checks) and the backend (lib + API
+routes) by a stub-based `tsc` run. NOT verified: React components, Next build,
+the database SQL against Neon, Google OAuth end-to-end, the vault in a browser.
+Expect a fix-up round after the first deploy.
+
+What was added
+- Admin login (`/admin/login`, link top-right of `/login`), 8-hour admin
+  sessions, audit log (`/admin/audit`). Admins = emails in env `ADMIN_EMAILS`;
+  removing an email revokes access on the next request. Admins sign in only
+  through the admin page; ordinary login treats admin emails as unknown.
+- Sidebar for admins: User History, User files, Audit log, Settings.
+  Admins cannot use the assistant, upload, or link Telegram (API-enforced).
+- User History: user list -> that user's chats grouped by date -> read chat.
+  Shows questions, answers and the cited quote text. File names are hidden.
+- User files: locked section. Each admin presses the lock button beside the
+  theme switch. Files open for an admin only if they approved AND at least
+  `ADMIN_FILE_QUORUM` (default 2) distinct admins hold approvals younger than
+  `ADMIN_VAULT_MINUTES` (default 60). Pressing again withdraws. Enforced on the
+  server for every request to `/api/admin/files`, not just in the UI.
+- History (Personal) in the sidebar for everyone: date-grouped, click to reopen
+  and continue, delete. Chats are saved from now on (web and Telegram); chats
+  asked before this change were never stored and cannot be recovered.
+- Security: DB-backed rate limits (login 5/15min per email + 20 per IP; admin 4
+  + 10; signup 10/h), constant-time unknown-email check, same-origin check on
+  state-changing routes, open-redirect-safe `next`, passwords >= 10 chars with
+  letters+numbers and a common-password list, other sessions signed out after a
+  password change, security headers (frame deny, nosniff, HSTS, referrer,
+  permissions), no-store on admin pages/APIs, admin emails can't be registered
+  as ordinary accounts. No CSP yet (would need nonces for Next inline scripts).
+- Google sign-in (hand-rolled OAuth, state cookie bound to the browser) for
+  users and admins. "Forgot password" = sign in with Google (same verified
+  email), then Settings lets you set a new password without the old one for
+  10 minutes. No email-based reset: there is no email service.
+- Optional `/admin/setup` (exists only if `ADMIN_SETUP_KEY` is set) for creating
+  an admin password without Google.
+
+Known limits / decisions
+- Admins can read users' chat answers (derived from their files). Disclosure
+  added on the signup form.
+- Matrix answers are not shown to admins. Only role='user' data is visible.
+- Existing accounts keep short passwords; the new rules apply to new/changed ones.
+- Existing admin who is also a normal user account with documents: their email
+  becomes admin-only, assistant disabled.

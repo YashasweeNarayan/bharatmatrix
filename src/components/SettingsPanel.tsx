@@ -23,6 +23,7 @@ export default function SettingsPanel({
   createdAt,
   documentCount,
   telegramLinked,
+  canResetWithoutCurrent = false,
 }: {
   email: string;
   initialUsername: string | null;
@@ -30,6 +31,8 @@ export default function SettingsPanel({
   createdAt: string;
   documentCount: number;
   telegramLinked: boolean;
+  /** True right after a fresh Google sign-in: the old password isn't needed. */
+  canResetWithoutCurrent?: boolean;
 }) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -73,7 +76,7 @@ export default function SettingsPanel({
         </dl>
       </div>
 
-      <PasswordCard />
+      <PasswordCard skipCurrent={canResetWithoutCurrent} />
 
       <div className="rounded-2xl border border-ink-700 bg-ink-900/40 p-5">
         <h2 className="text-[15px] font-semibold text-neutral-100">
@@ -297,7 +300,7 @@ function ProfileCard({
   );
 }
 
-function PasswordCard() {
+function PasswordCard({ skipCurrent }: { skipCurrent: boolean }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -307,8 +310,8 @@ function PasswordCard() {
 
   const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
   const canSubmit =
-    currentPassword.length > 0 &&
-    newPassword.length >= 8 &&
+    (skipCurrent || currentPassword.length > 0) &&
+    newPassword.length >= 10 &&
     newPassword === confirmPassword &&
     !saving;
 
@@ -347,16 +350,23 @@ function PasswordCard() {
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
-        <Field
-          label="Current password"
-          value={currentPassword}
-          onChange={setCurrentPassword}
-        />
+        {skipCurrent ? (
+          <p className="rounded-lg border border-matrix-500/30 bg-matrix-500/10 px-3 py-2 text-[12.5px] text-matrix-400">
+            You just signed in with Google, so you can set a new password
+            without the old one.
+          </p>
+        ) : (
+          <Field
+            label="Current password"
+            value={currentPassword}
+            onChange={setCurrentPassword}
+          />
+        )}
         <Field
           label="New password"
           value={newPassword}
           onChange={setNewPassword}
-          hint="At least 8 characters"
+          hint="At least 10 characters, with letters and numbers"
         />
         <Field
           label="Confirm new password"

@@ -5,13 +5,49 @@ import { sql } from "@/lib/db";
 
 export const SESSION_COOKIE = "bm_session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Admin sessions are deliberately short: an unattended, signed-in admin
+// browser is the most valuable thing an attacker could find.
+const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
+
+export type AuthMethod = "password" | "google";
 
 export type AuthUser = {
   id: string;
   email: string;
   username: string | null;
   avatarUrl: string | null;
+  role: "user" | "admin";
+  /** True only for a session created through the admin login flow, for an
+   *  email that is (still) in ADMIN_EMAILS. */
+  isAdmin: boolean;
+  authMethod: AuthMethod;
+  sessionCreatedAt: Date;
 };
+
+/** Emails allowed to be admins. The single source of truth is this env var,
+ *  so removing an email here instantly revokes that person's admin access
+ *  on their very next request, whatever is stored in the database. */
+export function adminEmails(): string[] {
+  return (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isAdminEmail(email: string): boolean {
+  return adminEmails().includes(email.trim().toLowerCase());
+}
+
+let dummyHash: Promise<string> | null = null;
+/**
+ * Verify against a throwaway hash when the email doesn't exist, so a
+ * login for an unknown email takes as long as one for a real email —
+ * otherwise response time reveals which emails have accounts.
+ */
+export async function burnPasswordCheck(password: string): Promise<void> {
+  dummyHash ??= bcrypt.hash("not-a-real-password", 12);
+  await bcrypt.compare(password, await dummyHash);
+}
 
 export async function hashPassword(password: string): Promise<string> {
   // 12 rounds is a reasonable, widely-used default for interactive
@@ -32,17 +68,38 @@ function generateSessionToken(): string {
   return randomBytes(32).toString("hex");
 }
 
-export async function createSession(userId: string): Promise<{
+export async function createSession(
+  userId: string,
+  opts: { admin?: boolean; method?: AuthMethod } = {},
+): Promise<{
   token: string;
   expiresAt: Date;
 }> {
   const token = generateSessionToken();
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  const admin = opts.admin ?? false;
+  const method = opts.method ?? "password";
+  const expiresAt = new Date(
+    Date.now() + (admin ? ADMIN_SESSION_TTL_MS : SESSION_TTL_MS),
+  );
   await sql`
-    insert into sessions (token, user_id, expires_at)
-    values (${token}, ${userId}, ${expiresAt})
+    insert into sessions (token, user_id, expires_at, is_admin, auth_method)
+    values (${token}, ${userId}, ${expiresAt}, ${admin}, ${method})
   `;
+  await sql`update users set last_login_at = now() where id = ${userId}`;
   return { token, expiresAt };
+}
+
+/** Sign out everywhere except (optionally) one session — used after a
+ *  password change or reset so a stolen session can't outlive it. */
+export async function destroyOtherSessions(
+  userId: string,
+  keepToken?: string,
+): Promise<void> {
+  if (keepToken) {
+    await sql`delete from sessions where user_id = ${userId} and token <> ${keepToken}`;
+  } else {
+    await sql`delete from sessions where user_id = ${userId}`;
+  }
 }
 
 export async function destroySession(token: string): Promise<void> {
@@ -62,7 +119,8 @@ export async function getUserByToken(
   if (!token) return null;
 
   const rows = await sql`
-    select u.id, u.email, u.username, u.avatar_url, s.expires_at
+    select u.id, u.email, u.username, u.avatar_url, u.role,
+           s.expires_at, s.is_admin, s.auth_method, s.created_at
     from sessions s
     join users u on u.id = s.user_id
     where s.token = ${token}
@@ -75,11 +133,19 @@ export async function getUserByToken(
     return null;
   }
 
+  const email = row.email as string;
+  const role = row.role === "admin" ? "admin" : "user";
   return {
     id: row.id as string,
-    email: row.email as string,
+    email,
     username: (row.username as string | null) ?? null,
     avatarUrl: (row.avatar_url as string | null) ?? null,
+    role,
+    // All three must hold: an admin-flagged session, an admin role row, and
+    // the email still being on the env allow-list.
+    isAdmin: Boolean(row.is_admin) && role === "admin" && isAdminEmail(email),
+    authMethod: row.auth_method === "google" ? "google" : "password",
+    sessionCreatedAt: new Date(row.created_at as string),
   };
 }
 
@@ -132,5 +198,21 @@ export class UnauthorizedError extends Error {
 export async function requireUser(req: NextRequest): Promise<AuthUser> {
   const user = await getSessionUser(req);
   if (!user) throw new UnauthorizedError();
+  return user;
+}
+
+/** Resolves the logged-in admin, or throws UnauthorizedError (401) /
+ *  ForbiddenError (403) so a plain user learns nothing about admin routes
+ *  beyond "no". */
+export class ForbiddenError extends Error {
+  constructor() {
+    super("Forbidden.");
+    this.name = "ForbiddenError";
+  }
+}
+
+export async function requireAdmin(req: NextRequest): Promise<AuthUser> {
+  const user = await requireUser(req);
+  if (!user.isAdmin) throw new ForbiddenError();
   return user;
 }

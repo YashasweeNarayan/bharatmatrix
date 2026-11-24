@@ -16,9 +16,12 @@ export default async function EvaluationPage() {
   if (!user) {
     redirect("/login?next=/evaluation");
   }
+  if (user.isAdmin) redirect("/admin/history");
 
   return (
-    <AppShell email={user.email} username={user.username} avatarUrl={user.avatarUrl}>
+    <AppShell email={user.email} username={user.username} avatarUrl={user.avatarUrl}
+      isAdmin={user.isAdmin}
+    >
       <EvaluationHost />
     </AppShell>
   );

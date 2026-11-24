@@ -57,6 +57,13 @@ export async function POST(req: NextRequest) {
     throw err;
   }
 
+  if (user.role === "admin") {
+    return NextResponse.json(
+      { error: "Admin accounts can't upload documents." },
+      { status: 403 },
+    );
+  }
+
   let buffer: Buffer;
   let file: File;
   try {

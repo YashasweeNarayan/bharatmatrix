@@ -13,9 +13,13 @@ import {
   LogOut,
   PanelLeftClose,
   Loader2,
+  Users,
+  FolderLock,
+  ScrollText,
 } from "lucide-react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Avatar from "@/components/Avatar";
+import HistoryList from "@/components/HistoryList";
 
 const NAV = [
   { href: "/workspace", label: "Home", icon: Home },
@@ -24,6 +28,13 @@ const NAV = [
   { href: "/telegram", label: "Telegram Connect", icon: Send },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/evaluation", label: "Evaluations", icon: ClipboardCheck },
+];
+
+const ADMIN_NAV = [
+  { href: "/admin/history", label: "User History", icon: Users },
+  { href: "/admin/files", label: "User files", icon: FolderLock },
+  { href: "/admin/audit", label: "Audit log", icon: ScrollText },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 /**
@@ -41,12 +52,14 @@ export default function Sidebar({
   email,
   username,
   avatarUrl,
+  isAdmin = false,
   open,
   onClose,
 }: {
   email: string;
   username?: string | null;
   avatarUrl?: string | null;
+  isAdmin?: boolean;
   open: boolean;
   onClose: () => void;
 }) {
@@ -103,7 +116,7 @@ export default function Sidebar({
         </div>
 
         <nav className="flex w-[260px] flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-4">
-          {NAV.map((item) => {
+          {(isAdmin ? ADMIN_NAV : NAV).map((item) => {
             const active = pathname === item.href;
             const Icon = item.icon;
             return (
@@ -123,6 +136,16 @@ export default function Sidebar({
             );
           })}
         </nav>
+
+        <div className="w-[260px] flex-shrink-0">
+          <Suspense fallback={null}>
+            <HistoryList
+              onNavigate={() => {
+                if (window.innerWidth < 1024) onClose();
+              }}
+            />
+          </Suspense>
+        </div>
 
         <div className="w-[260px] flex-shrink-0 border-t border-ink-700 p-3">
           <div className="flex items-center gap-2 px-1 pb-2">

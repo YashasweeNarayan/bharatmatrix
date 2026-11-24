@@ -28,7 +28,9 @@ export default async function SettingsPage() {
   `;
 
   return (
-    <AppShell email={user.email} username={user.username} avatarUrl={user.avatarUrl}>
+    <AppShell email={user.email} username={user.username} avatarUrl={user.avatarUrl}
+      isAdmin={user.isAdmin}
+    >
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
           Settings
@@ -46,6 +48,10 @@ export default async function SettingsPage() {
           createdAt={account?.created_at ?? new Date().toISOString()}
           documentCount={documentCount ?? 0}
           telegramLinked={Boolean(telegramLink)}
+          canResetWithoutCurrent={
+            user.authMethod === "google" &&
+            Date.now() - user.sessionCreatedAt.getTime() < 10 * 60 * 1000
+          }
         />
       </div>
     </AppShell>

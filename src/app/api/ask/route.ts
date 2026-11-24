@@ -5,6 +5,7 @@ import { verifyGrounding } from "@/lib/verify";
 import { requireUser, UnauthorizedError } from "@/lib/auth";
 import { hybridRetrieve } from "@/lib/retrieve";
 import { logRerankFeedback } from "@/lib/feedback";
+import { saveChatTurn } from "@/lib/history";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -19,6 +20,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not signed in." }, { status: 401 });
     }
     throw err;
+  }
+
+  // Admins review conversations; they don't use the assistants themselves.
+  if (user.role === "admin") {
+    return NextResponse.json(
+      { error: "Admin accounts can't use the assistant." },
+      { status: 403 },
+    );
   }
 
   const body = await req.json().catch(() => null);
@@ -92,7 +101,24 @@ export async function POST(req: NextRequest) {
       console.warn("[ask] Failed to log rerank feedback:", err);
     });
 
-    return NextResponse.json({ ...result, rerankerUsed });
+    // Saved so it shows up under History. A failure here must not cost the
+    // user their answer.
+    const conversationId = await saveChatTurn(
+      user.id,
+      body?.conversationId,
+      {
+        question,
+        answer: result.answer,
+        grounded: result.grounded,
+        citations: result.citations,
+        reranker: String(rerankerUsed),
+      },
+    ).catch((err) => {
+      console.warn("[ask] Failed to save chat turn:", err);
+      return null;
+    });
+
+    return NextResponse.json({ ...result, rerankerUsed, conversationId });
   } catch (err) {
     return NextResponse.json(
       {

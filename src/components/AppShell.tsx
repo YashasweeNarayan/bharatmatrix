@@ -6,16 +6,19 @@ import { PanelLeftOpen } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Avatar from "@/components/Avatar";
 import ThemeToggle from "@/components/ThemeToggle";
+import VaultButton from "@/components/VaultButton";
 
 export default function AppShell({
   email,
   username,
   avatarUrl,
+  isAdmin = false,
   children,
 }: {
   email: string;
   username?: string | null;
   avatarUrl?: string | null;
+  isAdmin?: boolean;
   children: ReactNode;
 }) {
   const displayName = username || email;
@@ -31,6 +34,7 @@ export default function AppShell({
         email={email}
         username={username}
         avatarUrl={avatarUrl}
+        isAdmin={isAdmin}
         open={open}
         onClose={() => setOpen(false)}
       />
@@ -59,6 +63,7 @@ export default function AppShell({
           )}
 
           <div className="ml-auto flex items-center gap-3">
+            {isAdmin && <VaultButton />}
             <ThemeToggle />
             <Link
               href="/settings"

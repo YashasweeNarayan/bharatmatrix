@@ -62,10 +62,17 @@ function newId() {
 export default function ChatPanel({
   readyCount,
   filenameById,
+  conversationId: initialConversationId = null,
 }: {
   readyCount: number;
   filenameById: FilenameLookup;
+  /** Set when opened from History; the thread is loaded and continued. */
+  conversationId?: string | null;
 }) {
+  const [convId, setConvId] = useState<string | null>(initialConversationId);
+  const [loadingHistory, setLoadingHistory] = useState(
+    Boolean(initialConversationId),
+  );
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const waitTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
@@ -88,6 +95,53 @@ export default function ChatPanel({
       behavior: "smooth",
     });
   }, [turns]);
+
+  // Opening a past conversation from History: load its turns, then new
+  // questions continue the same thread.
+  useEffect(() => {
+    if (!initialConversationId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/history/${initialConversationId}`);
+        if (!res.ok) throw new Error("not found");
+        const data = (await res.json()) as {
+          turns: {
+            id: string;
+            question: string;
+            answer: string;
+            grounded: boolean;
+            citations: Citation[];
+          }[];
+        };
+        if (cancelled) return;
+        setTurns(
+          data.turns.map((t) => ({
+            id: t.id,
+            question: t.question,
+            status: "done" as const,
+            waitStage: "waiting" as const,
+            result: {
+              answer: t.answer,
+              grounded: t.grounded,
+              citations: t.citations ?? [],
+            },
+            error: null,
+            movingToMatrix: false,
+            movedToMatrix: false,
+            moveError: null,
+          })),
+        );
+      } catch {
+        if (!cancelled) setConvId(null);
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialConversationId]);
 
   function patchTurn(id: string, patch: Partial<Turn>) {
     setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -124,13 +178,18 @@ export default function ChatPanel({
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: text }),
+        body: JSON.stringify({ question: text, conversationId: convId }),
       });
       const data = await res.json();
       if (!res.ok) {
         patchTurn(id, { status: "error", error: data.error ?? "Something went wrong." });
       } else {
         patchTurn(id, { status: "done", result: data });
+        if (typeof data.conversationId === "string") {
+          setConvId(data.conversationId);
+          // Tell the sidebar's History list to refresh.
+          window.dispatchEvent(new Event("bm:history-changed"));
+        }
       }
     } catch {
       patchTurn(id, { status: "error", error: "Couldn't reach the server." });
@@ -184,7 +243,11 @@ export default function ChatPanel({
   return (
     <div className="flex h-full min-h-[70vh] flex-col rounded-2xl border border-ink-700 bg-ink-900/40">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6">
-        {turns.length === 0 ? (
+        {loadingHistory ? (
+          <div className="flex h-full min-h-[50vh] items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-neutral-600" />
+          </div>
+        ) : turns.length === 0 ? (
           <div className="flex h-full min-h-[50vh] flex-col items-center justify-center text-center">
             <MessageSquare className="h-6 w-6 text-neutral-700" />
             <p className="mt-3 text-[14px] text-neutral-400">

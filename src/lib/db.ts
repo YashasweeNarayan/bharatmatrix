@@ -346,6 +346,98 @@ export function ensureSchema(): Promise<void> {
         create index if not exists rerank_feedback_export_idx
         on rerank_feedback (used_in_training, created_at)
       `;
+
+      // ---- Admin accounts, login hardening, chat history, file vault -----
+
+      // role is 'user' or 'admin'. Admin status is never self-service: an
+      // account only becomes admin through Google sign-in with a verified
+      // email listed in ADMIN_EMAILS, or through the setup-key page (see
+      // /api/admin/setup). Even then, a request is only treated as admin if
+      // the SESSION was created through an admin login (sessions.is_admin)
+      // AND the email is still listed in ADMIN_EMAILS — removing an email
+      // from that env var revokes admin access immediately.
+      await sql`alter table users alter column password_hash drop not null`;
+      await sql`alter table users add column if not exists role text not null default 'user'`;
+      await sql`alter table users add column if not exists last_login_at timestamptz`;
+      await sql`alter table sessions add column if not exists is_admin boolean not null default false`;
+      // 'password' or 'google'. A recent Google sign-in is what lets someone
+      // who forgot their password set a new one without the old one.
+      await sql`alter table sessions add column if not exists auth_method text not null default 'password'`;
+
+      // Failed-login / signup counters for rate limiting. In the database
+      // (not memory) because serverless instances don't share memory.
+      await sql`
+        create table if not exists auth_attempts (
+          id bigserial primary key,
+          bucket text not null,
+          created_at timestamptz not null default now()
+        )
+      `;
+      await sql`
+        create index if not exists auth_attempts_bucket_idx
+        on auth_attempts (bucket, created_at)
+      `;
+
+      // Saved chats, so "History (Personal)" works and admins can review
+      // what users asked. Chats before this table existed were never stored.
+      await sql`
+        create table if not exists chat_conversations (
+          id uuid primary key default gen_random_uuid(),
+          user_id uuid not null references users(id) on delete cascade,
+          title text not null,
+          channel text not null default 'web',
+          created_at timestamptz not null default now(),
+          updated_at timestamptz not null default now()
+        )
+      `;
+      await sql`
+        create index if not exists chat_conversations_user_idx
+        on chat_conversations (user_id, updated_at desc)
+      `;
+      await sql`
+        create table if not exists chat_turns (
+          id uuid primary key default gen_random_uuid(),
+          conversation_id uuid not null references chat_conversations(id) on delete cascade,
+          user_id uuid not null references users(id) on delete cascade,
+          question text not null,
+          answer text not null,
+          grounded boolean not null default false,
+          citations jsonb not null default '[]'::jsonb,
+          reranker text,
+          created_at timestamptz not null default now()
+        )
+      `;
+      await sql`
+        create index if not exists chat_turns_conversation_idx
+        on chat_turns (conversation_id, created_at)
+      `;
+
+      // Two-admin rule for the "User files" section: each admin records an
+      // approval here; files open only while enough admins hold an
+      // unexpired approval (see lib/vaultLogic.ts).
+      await sql`
+        create table if not exists admin_vault_approvals (
+          admin_id uuid primary key references users(id) on delete cascade,
+          approved_at timestamptz not null default now()
+        )
+      `;
+
+      // Who did what. admin_email is copied in so the trail survives an
+      // admin account being deleted.
+      await sql`
+        create table if not exists admin_audit (
+          id bigserial primary key,
+          admin_id uuid references users(id) on delete set null,
+          admin_email text not null,
+          action text not null,
+          target text,
+          created_at timestamptz not null default now()
+        )
+      `;
+      await sql`
+        create index if not exists admin_audit_created_idx
+        on admin_audit (created_at desc)
+      `;
     })();
   }
   return schemaReady;

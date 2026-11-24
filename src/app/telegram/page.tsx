@@ -16,9 +16,12 @@ export default async function TelegramPage() {
   if (!user) {
     redirect("/login?next=/telegram");
   }
+  if (user.isAdmin) redirect("/admin/history");
 
   return (
-    <AppShell email={user.email} username={user.username} avatarUrl={user.avatarUrl}>
+    <AppShell email={user.email} username={user.username} avatarUrl={user.avatarUrl}
+      isAdmin={user.isAdmin}
+    >
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
           Telegram Connect
