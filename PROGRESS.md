@@ -1220,3 +1220,46 @@ popping in — keyed by document id, so only genuinely new rows play
 the animation, not the whole list re-rendering on every refresh.
 
 Syntax-checked clean, committed, pushed.
+
+## 2026-11-24 — Cross-encoder training pipeline scaffolded (cross-encoder/)
+
+Built everything from methodology.md §4.2's "next up" cross-encoder
+item — the full pipeline from raw data to a deployable model, as a
+runbook (`cross-encoder/README.md`) rather than something that runs on
+its own, because the two steps that actually matter (fine-tuning on a
+GPU, hosting the result) need your own Google/Hugging Face accounts;
+nothing in this sandbox can do those for you.
+
+- `generate_synthetic_data.py` — pulls ready document chunks straight
+  from Postgres, asks Gemini to write one question each chunk actually
+  answers, and pairs it with that chunk (positive) plus a wrong chunk
+  from a different document and, when available, a harder same-
+  document decoy (negatives) — all written in the same `{question,
+  passage, label}` shape the real feedback export already uses, so the
+  two can be concatenated directly.
+- `download_feedback.mjs` — lists and downloads every nightly
+  `rerank_feedback` export out of Vercel Blob (the real-usage half of
+  the dataset, which will be thin until the app's had real traffic).
+- `combine_and_split.py` — merges both (real feedback wins over a
+  synthetic row making the same claim), dedupes, and splits into
+  `train.jsonl`/`val.jsonl`.
+- `train.ipynb` — a Colab notebook that fine-tunes
+  `cross-encoder/ms-marco-MiniLM-L-6-v2` (a small, pretrained cross-
+  encoder, ~22M params) on that data and pushes the result to the
+  Hugging Face Hub. Documented honestly as *fine-tuning*, not training
+  from scratch — a from-scratch model needs far more data/compute than
+  a free Colab GPU session gives you, and this is the real, standard
+  way a project this size gets "its own" model.
+- `serve/` — a FastAPI app implementing `rerankWithCrossEncoder()`'s
+  exact contract (`POST / {question, passages} -> {rankedIndexes}`),
+  with a `Dockerfile` and HF-Spaces-ready `README.md` (front-matter and
+  all) to deploy it as a free Hugging Face Space.
+
+Once a Space is live, setting `CROSS_ENCODER_URL` in Vercel is the only
+change needed in the deployed app — `rerankWithFallback()` was already
+built to try it and fall back to Gemini, and nothing about that logic
+needed to change for this.
+
+methodology.md §4.2 updated to point at this; nothing here touches the
+deployed Next.js app itself, so no redeploy needed from this commit —
+only from setting `CROSS_ENCODER_URL` once a model exists.

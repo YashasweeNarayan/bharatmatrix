@@ -1,0 +1,105 @@
+# Training BharatMatrix's own cross-encoder
+
+Everything in this folder is run **outside** the deployed Next.js app —
+on your own machine and in Google Colab — since there's no GPU and no
+training framework inside a Vercel serverless function (see
+`/api/cron/export-feedback/route.ts`'s own comment for why that nightly
+job only *exports* data instead of training anything itself).
+
+This is the "next up" item from `methodology.md` §4.2, now fully
+scaffolded: every script, the notebook, and the serving app are ready to
+run. What's left is work only you can do — running a Colab GPU session
+under your own Google account and creating a Hugging Face Space under
+your own account — which is why this is a runbook for you to follow
+rather than something run automatically.
+
+## The pipeline, end to end
+
+```
+ generate_synthetic_data.py ──┐
+                               ├──> combine_and_split.py ──> train.jsonl, val.jsonl
+   download_feedback.mjs  ────┘                                     │
+                                                                     v
+                                                              train.ipynb (Colab)
+                                                                     │
+                                                      fine-tuned model, pushed to
+                                                         Hugging Face Hub
+                                                                     │
+                                                                     v
+                                                    serve/ deployed as an HF Space
+                                                                     │
+                                                                     v
+                                          CROSS_ENCODER_URL set in Vercel — done
+```
+
+## Step by step
+
+### 1. Generate the bootstrapping dataset
+
+```bash
+cd cross-encoder
+pip install "psycopg[binary]" requests
+export DATABASE_URL=...     # same value as the main app's Vercel env var
+export GEMINI_API_KEY=...   # same value as the main app's Vercel env var
+python generate_synthetic_data.py --limit 250 --out synthetic.jsonl
+```
+
+This asks Gemini to write one question per sampled document chunk, then
+pairs it with that chunk (positive) and a couple of wrong chunks
+(negative) — see the comment at the top of the script for the honest
+caveat on what synthetic data like this is and isn't good for.
+
+### 2. Pull down real usage data (optional, but use it once you have it)
+
+```bash
+npm install
+BLOB_READ_WRITE_TOKEN=... node download_feedback.mjs feedback.jsonl
+```
+
+This is the human-usage half of the dataset — every grounded Ask answer
+quietly logs its cited chunk as a positive and a couple of retrieved-
+but-not-cited chunks as negatives (see `src/lib/feedback.ts`), exported
+nightly by Vercel Cron. It'll be empty/small until the app has had real
+use; that's fine, run step 1 alone until then.
+
+### 3. Combine into train/val splits
+
+```bash
+python combine_and_split.py --synthetic synthetic.jsonl --feedback feedback.jsonl
+```
+
+Prints how many pairs you ended up with and the synthetic/real split —
+worth actually reading before you spend a Colab session on it.
+
+### 4. Fine-tune in Colab
+
+Upload `train.ipynb` to https://colab.research.google.com (File → Upload
+notebook), switch to a GPU runtime, and run it top to bottom — it'll ask
+you to upload `train.jsonl`/`val.jsonl` partway through, then walks
+through fine-tuning `cross-encoder/ms-marco-MiniLM-L-6-v2` on them and
+pushing the result to your Hugging Face account.
+
+### 5. Deploy the model behind an API
+
+Follow `serve/README.md` — create a Hugging Face Space (Docker SDK),
+upload the four files in `serve/`, point its `MODEL_PATH` variable at
+the model you just pushed.
+
+### 6. Wire it into the app
+
+Set `CROSS_ENCODER_URL` in the Vercel project's environment variables to
+the Space's URL, redeploy. `rerankWithFallback()` (`src/lib/retrieve.ts`)
+starts trying it on every request from then on, falling back to the
+Gemini reranker exactly as it already does today whenever the Space is
+asleep or slow — nothing else in the app needs to change.
+
+## Re-training later
+
+Once `CROSS_ENCODER_URL` is live, real usage keeps feeding
+`rerank_feedback` every day. Re-running steps 1–6 periodically (monthly,
+or whenever enough new feedback has piled up) with a higher real-to-
+synthetic ratio each time is the "closing the loop" item still open in
+`methodology.md` §4.2 — there's no scheduled job that does this
+automatically yet, since that would need its own always-on compute to
+retrain on, which is a bigger decision (cost, cadence) worth making
+deliberately rather than defaulting into.

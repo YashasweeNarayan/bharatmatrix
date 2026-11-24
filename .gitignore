@@ -32,3 +32,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# cross-encoder/: local-only artifacts from running the pipeline scripts
+cross-encoder/__pycache__/
+cross-encoder/serve/__pycache__/
+cross-encoder/*.jsonl
+cross-encoder/node_modules/

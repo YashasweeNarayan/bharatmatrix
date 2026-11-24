@@ -182,26 +182,45 @@ Tailwind CSS.
   create the bot via @BotFather and set the three env vars +
   `setWebhook` call. Nothing left to build; this is operational setup.
 
-### 4.2 Next up (explicitly agreed, not started)
+### 4.2 Next up (scaffolded, waiting on your own Colab/HF accounts)
 - **Train and deploy a real tiny cross-encoder reranker** to replace the
   Gemini-as-reranker fallback as the *primary* path (Gemini stays as the
   fallback when the cross-encoder is slow/unavailable — this fallback
   machinery is already built and live, just unused since
-  `CROSS_ENCODER_URL` is unset):
-  1. Generate training data from the project's own chunked documents
-     (synthetic positive/negative question-passage pairs).
-  2. Fine-tune a small pretrained model (e.g. TinyBERT/MiniLM family,
-     ~15-30M params) using `sentence-transformers`' `CrossEncoder`
-     trainer — runs on Google Colab's free GPU tier.
-  3. Wrap it in a small FastAPI service, deploy it (HF Spaces / Render /
-     Railway free tier — accepting the cold-start-on-idle trade-off, or
-     a small paid always-on tier if demo reliability matters more).
-  4. Point `CROSS_ENCODER_URL` at it.
-- **Close the continuous fine-tuning loop**: once the cross-encoder is
-  hosted, give *that* service its own scheduled job to pull the nightly
-  `rerank_feedback` export and retrain the checkpoint — the export side
-  (§2.8) is already built and running; only the retrain-and-reload side
-  on the model host is still missing.
+  `CROSS_ENCODER_URL` is unset). Every script, the training notebook, and
+  the serving app now exist in `cross-encoder/` — see
+  `cross-encoder/README.md` for the full runbook — but the actual runs
+  need your own Google account (Colab's GPU) and Hugging Face account
+  (hosting the model/Space), so this step is a set of instructions for
+  you to follow rather than something run automatically:
+  1. `cross-encoder/generate_synthetic_data.py` — Gemini-generated
+     question/passage pairs from the app's own ready document chunks
+     (the bootstrapping half of the dataset, since real usage hasn't
+     produced much `rerank_feedback` yet).
+  2. `cross-encoder/download_feedback.mjs` — pulls every nightly
+     `rerank_feedback` export (§2.8) out of Blob (the real-usage half).
+  3. `cross-encoder/combine_and_split.py` — merges both into
+     deduplicated `train.jsonl`/`val.jsonl`.
+  4. `cross-encoder/train.ipynb` (Colab, free GPU) — fine-tunes
+     `cross-encoder/ms-marco-MiniLM-L-6-v2` (~22M params) on that data
+     and pushes the result to the Hugging Face Hub. Honest framing:
+     this fine-tunes a small pretrained checkpoint, not a model trained
+     from random weights — the latter needs far more data/compute than
+     a free GPU session gives you, and fine-tuning your own domain data
+     into an existing small model is the real, standard way a project
+     this size ends up with "its own" model.
+  5. `cross-encoder/serve/` — a FastAPI app implementing
+     `rerankWithCrossEncoder()`'s exact contract, ready to deploy as a
+     Hugging Face Space (Docker SDK, free CPU tier).
+  6. Set `CROSS_ENCODER_URL` to the Space's URL in Vercel — nothing else
+     in the app changes; `rerankWithFallback()` starts trying it
+     immediately and falls back to Gemini exactly as it already does
+     whenever the Space is cold/slow.
+- **Close the continuous fine-tuning loop**: re-running the pipeline
+  above periodically as more real `rerank_feedback` accumulates is the
+  practical version of this for now; a fully automatic scheduled
+  retrain-and-reload on the model host is a bigger, separate decision
+  (needs its own always-on compute) not yet made.
 
 ### 4.3 Explicitly deferred / accepted trade-offs (not gaps)
 - Literal BM25 (vs. Postgres's TF-based `ts_rank_cd`) — would need a
