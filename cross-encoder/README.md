@@ -117,8 +117,8 @@ asleep or slow — nothing else in the app needs to change.
 
 ## Automatic retraining (GitHub Actions)
 
-`.github/workflows/retrain.yml` re-runs the whole pipeline on the 1st of every month
-at 03:17 UTC (and on demand): pull feedback, generate synthetic pairs, build public
+`.github/workflows/retrain.yml` re-runs the whole pipeline every Monday
+at 03:17 UTC, i.e. 08:47 IST (and on demand): pull feedback, generate synthetic pairs, build public
 data, combine, train, then **compare the new model with the one the Space serves**.
 `retrain_gate.py` promotes the new model only if it passes every rule:
 - your own validation set has at least 50 questions (otherwise it never promotes),
@@ -134,7 +134,7 @@ setting `MODEL_PATH` back. Otherwise nothing changes and the result is in the ru
    `DATABASE_URL`, `GEMINI_API_KEY`, `BLOB_READ_WRITE_TOKEN`, `HF_TOKEN` (a *Write* token).
 2. Actions tab → "Retrain cross-encoder" → Run workflow. Leave "promote" unticked for the
    first run (dry run), and read the summary.
-3. When the dry run looks sensible, later monthly runs are allowed to promote on their own.
+3. When the dry run looks sensible, later weekly runs are allowed to promote on their own.
 
 **Limits (unmeasured / unverified):** never run end to end; the first run may need fixes.
 GitHub's runners have no GPU, so training runs on CPU (time unknown; the job times out at

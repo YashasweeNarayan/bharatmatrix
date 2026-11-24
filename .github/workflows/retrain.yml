@@ -1,4 +1,4 @@
-# Monthly automatic retraining of the cross-encoder. See cross-encoder/README.md
+# Weekly automatic retraining of the cross-encoder. See cross-encoder/README.md
 # ("Automatic retraining") for the one-time setup (4 repository secrets).
 #
 # Safe by default: scheduled runs may promote a new model ONLY if it passes the
@@ -8,7 +8,7 @@ name: Retrain cross-encoder
 
 on:
   schedule:
-    - cron: "17 3 1 * *"   # 03:17 UTC on the 1st of every month
+    - cron: "17 3 * * 1"   # 03:17 UTC (08:47 IST) every Monday
   workflow_dispatch:
     inputs:
       promote:

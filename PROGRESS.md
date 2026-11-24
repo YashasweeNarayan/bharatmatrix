@@ -1388,3 +1388,6 @@ the workflow itself have NEVER been run (no torch, no HF, no GitHub Actions
 here). CPU training time on GitHub runners is unmeasured. Added `--quiet` to
 generate_synthetic_data.py so CI logs on a public repo don't print question text.
 Needs 4 repo secrets: DATABASE_URL, GEMINI_API_KEY, BLOB_READ_WRITE_TOKEN, HF_TOKEN.
+- Retraining schedule changed from monthly to weekly (Mondays 03:17 UTC / 08:47 IST).
+  Note: weekly runs use ~one GitHub runner session each; the gate still blocks
+  promotion until the own-data validation set has >= 50 questions.
