@@ -17,7 +17,7 @@ on:
         default: false
       synthetic_limit:
         description: "Document chunks to generate questions for (Gemini free tier is slow)"
-        default: "400"
+        default: "100"
 
 permissions:
   contents: read
@@ -60,7 +60,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          SYN_LIMIT: ${{ inputs.synthetic_limit || '400' }}
+          SYN_LIMIT: ${{ inputs.synthetic_limit || '100' }}
         run: python generate_synthetic_data.py --limit "$SYN_LIMIT" --out synthetic.jsonl --quiet
 
       - name: Build public data and the hand-made test set
