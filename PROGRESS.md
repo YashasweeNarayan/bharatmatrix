@@ -1472,3 +1472,26 @@ tokens/fonts. Not built or viewed in a browser here — check it on Vercel.
   added ONLY the template's block: its three stacked boxes (the template's
   LOGO_VARIANT 1, same proportions), turning slowly behind the hero, as CSS 3D
   (`StackedCube.tsx`). Removed WireCube and the hatch styles.
+
+## 2026-11-25 — Cinematic landing page, new colour scheme, copy pass (partly verified)
+
+- Looked through Lovable's public template gallery (about 227 templates): mostly
+  parallax portfolios and finance dashboards; none is a pinned, scroll-driven
+  film, and all are Vite apps that can't be dropped into this Next.js app. So the
+  landing page was built from scratch instead.
+- Landing page (`src/components/cinematic/`): the stage pins while you scroll
+  through five scenes (documents fan out; a question is typed and evidence is
+  highlighted; a matrix with a flagged conflict; two keys open a lock; a
+  Telegram chat) with scene captions, letterbox bars and a chapter rail. Pure
+  CSS + one scroll listener, no new packages. Respects prefers-reduced-motion
+  (scenes stack, no pinning).
+- Verified here by bundling the component with esbuild and screenshotting it in
+  Chromium at several scroll positions (desktop 1280x760 and mobile 390x780): no
+  errors, scenes render and hand over cleanly. NOT verified: the Next build, the
+  real fonts (preview used a fallback font), other browsers.
+- Colours app-wide: ink ramp is now deep lapis-night (dark) / cool white (light),
+  the main accent (`saffron-*` classes) is brass #F2C14E, the secondary
+  (`matrix-*` classes) is lapis #4B5CFF, focus ring is brass. Class names were not
+  renamed, so every page picks it up. `onaccent` text is now #1a1400.
+- Copy pass: page descriptions on Documents, Matrix, Telegram, Settings, the
+  admin pages, auth subtitles, chat empty/loading text, drop zone.

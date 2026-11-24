@@ -15,7 +15,7 @@ export default async function Page() {
       isAdmin
     >
       <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">User files</h1>
-      <p className="mt-2 max-w-xl text-[14px] text-neutral-400">Locked until two admins have each approved with the lock button in the header.</p>
+      <p className="mt-2 max-w-xl text-[14px] text-neutral-400">Sealed until two administrators approve with the lock button in the header.</p>
       <div className="mt-6">
         <AdminFiles />
       </div>

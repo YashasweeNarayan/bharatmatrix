@@ -309,11 +309,11 @@ export default function DocumentsPanel({
         <Upload className="h-4 w-4 flex-shrink-0 text-saffron-500" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[12.5px] text-neutral-200">
-            Drop files here, or click to browse
+            Drop files here or click to upload
           </p>
           {!compact && (
             <p className="text-[11.5px] text-neutral-500">
-              PDF, DOCX or XLSX — multiple files at once
+              PDF, DOCX or XLSX. Upload several at once.
             </p>
           )}
         </div>
@@ -339,7 +339,7 @@ export default function DocumentsPanel({
 
         {!loading && docs.length === 0 && uploading.length === 0 && (
           <p className="px-3 py-10 text-center text-[13px] text-neutral-500">
-            No documents uploaded yet — drop one above to get started.
+            No documents yet. Upload your first file above.
           </p>
         )}
 

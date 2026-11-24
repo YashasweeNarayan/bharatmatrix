@@ -35,20 +35,20 @@ const config: Config = {
         // on top of a fixed-brightness accent button (bg-saffron-500),
         // which never darkens/lightens with the theme, so its text
         // shouldn't flip either. Not themed on purpose.
-        onaccent: "#0a0b0f",
+        onaccent: "#1a1400",
         saffron: {
           // 400 is themed (badge/status text needs a darker, more
           // saturated amber on a light background than on a dark one);
           // 500/600 are fixed solid-button/icon colors, vivid enough
           // for both themes as-is.
           400: "rgb(var(--saffron-400) / <alpha-value>)",
-          500: "#ff9f1c",
-          600: "#e8870a",
+          500: "#f2c14e",
+          600: "#d9a93a",
         },
         matrix: {
           400: "rgb(var(--matrix-400) / <alpha-value>)",
-          500: "#2dd4bf",
-          600: "#0d9488",
+          500: "#4b5cff",
+          600: "#2433c9",
         },
         red: {
           // Only the 400 "error text" shade is themed, for the same

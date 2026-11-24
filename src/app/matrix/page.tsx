@@ -27,8 +27,8 @@ export default async function MatrixPage() {
           Matrix
         </h1>
         <p className="mt-2 max-w-xl text-[14px] text-neutral-400">
-          Each question becomes a column, each document a row. Click a
-          filled cell to see the exact passage it was answered from.
+          One row per document, one column per question. Open any cell to read
+          the passage behind its answer.
         </p>
       </div>
 

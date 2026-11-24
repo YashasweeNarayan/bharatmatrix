@@ -97,9 +97,9 @@ export default function TelegramConnect() {
         </h2>
       </div>
       <p className="mt-1 text-[13px] text-neutral-500">
-        Scan with your phone&apos;s camera to ask BharatMatrix questions
-        from Telegram — answered the same way, only from your own
-        documents.
+        Scan the code with your phone&apos;s camera to link your account.
+        Questions you send in Telegram are answered from your own documents
+        and saved to your history.
       </p>
 
       {linkedChatCount != null && linkedChatCount > 0 && (
