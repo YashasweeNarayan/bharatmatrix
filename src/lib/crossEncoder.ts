@@ -24,12 +24,54 @@ const DEFAULT_TIMEOUT_MS = 2500;
 // *maybe* get a better rerank. 2.5s is "long enough for an already-warm
 // model to answer, short enough that a cold one doesn't sink the request."
 
+// Gradio-hosted variant (CROSS_ENCODER_MODE=gradio): used when the model sits
+// on a free Hugging Face Gradio/ZeroGPU Space, which only exposes Gradio's own
+// API — a POST that returns an event id, then a GET that streams the result.
+// Written from Gradio's documented HTTP protocol; not run against a live Space.
+async function rerankViaGradio(
+  base: string,
+  question: string,
+  passages: string[],
+  signal: AbortSignal,
+): Promise<number[]> {
+  const root = base.replace(/\/+$/, "");
+  const start = await fetch(`${root}/gradio_api/call/rerank`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data: [question, JSON.stringify(passages)] }),
+    signal,
+  });
+  if (!start.ok) {
+    throw new CrossEncoderUnavailableError(`Cross-encoder returned ${start.status}`);
+  }
+  const { event_id } = (await start.json()) as { event_id?: string };
+  if (!event_id) throw new CrossEncoderUnavailableError("No event_id from Gradio.");
+
+  const result = await fetch(`${root}/gradio_api/call/rerank/${event_id}`, { signal });
+  if (!result.ok) {
+    throw new CrossEncoderUnavailableError(`Cross-encoder returned ${result.status}`);
+  }
+  const text = await result.text();
+  // SSE body: "event: complete\ndata: [\"<json string>\"]\n\n" (or "event: error").
+  const m = text.match(/event: complete\s+data: (.*)/);
+  if (!m) throw new CrossEncoderUnavailableError("Gradio call did not complete.");
+  const arr = JSON.parse(m[1]) as unknown[];
+  const parsed = JSON.parse(String(arr[0])) as { rankedIndexes?: number[] };
+  if (!Array.isArray(parsed.rankedIndexes)) {
+    throw new CrossEncoderUnavailableError("Cross-encoder response missing rankedIndexes.");
+  }
+  return parsed.rankedIndexes;
+}
+
 export async function rerankWithCrossEncoder(
   question: string,
   passages: string[],
-  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  timeoutMs?: number,
 ): Promise<number[]> {
   const url = process.env.CROSS_ENCODER_URL;
+  const gradio = process.env.CROSS_ENCODER_MODE === "gradio";
+  // Gradio needs two round trips, so it gets a little more room.
+  timeoutMs ??= gradio ? 4000 : DEFAULT_TIMEOUT_MS;
   if (!url) {
     throw new CrossEncoderUnavailableError("CROSS_ENCODER_URL not configured.");
   }
@@ -38,6 +80,7 @@ export async function rerankWithCrossEncoder(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    if (gradio) return await rerankViaGradio(url, question, passages, controller.signal);
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

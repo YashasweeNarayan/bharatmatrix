@@ -1314,3 +1314,16 @@ it now reloads from disk before evaluating/uploading, and uses
 - Honest gap: all usable public data is US filings, nothing Indian.
 
 No change to the deployed Next.js app; no redeploy needed.
+
+## 2026-11-24 — Free-tier hosting: Gradio/ZeroGPU variant
+
+Hugging Face's free tier offers only ZeroGPU for Gradio Spaces (CPU Basic
+and Docker need PRO). `cross-encoder/serve-gradio/app.py` now: keeps a
+dummy `@spaces.GPU` function (ZeroGPU won't start without one), pins the
+model to CPU, and exposes Gradio's `api_name="rerank"`.
+`src/lib/crossEncoder.ts` gained a `CROSS_ENCODER_MODE=gradio` path that
+speaks Gradio's two-step HTTP call protocol (4s budget). Neither side was
+run against a live Space — written from the documented protocol. The
+earlier FastAPI-mount idea was dropped as unsupported on ZeroGPU. Unknowns:
+ZeroGPU CPU speed and whether the dummy-decorator trick passes its startup
+check; the Space logs will say.

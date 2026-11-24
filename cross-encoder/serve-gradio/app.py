@@ -1,86 +1,77 @@
 """
-Gradio-SDK version of the cross-encoder service, for Hugging Face accounts
-where the Docker SDK isn't available. Same contract as serve/app.py:
+Gradio-SDK cross-encoder service for FREE Hugging Face accounts, where the
+only free Gradio hardware is ZeroGPU (CPU Basic and Docker need PRO).
 
-    POST /  { "question": str, "passages": [str, ...] }
-         -> { "rankedIndexes": [int, ...], "scored": int, "ms": int }
+Why it looks odd:
+  * ZeroGPU refuses to start a Space that has no @spaces.GPU function, so
+    `_gpu_probe` exists purely to satisfy that check. We never call it.
+  * The model is pinned to device="cpu". ZeroGPU emulates CUDA at startup,
+    and a model that lands on that emulated GPU breaks outside a GPU call.
+    22M parameters scoring ~40 short passages is fine on CPU.
+  * The endpoint is Gradio's own API (`api_name="rerank"`), not a custom
+    POST /, because that's the route ZeroGPU supports. src/lib/crossEncoder.ts
+    talks to it when CROSS_ENCODER_MODE=gradio.
 
-Gradio Spaces run `python app.py` and expose port 7860. We start our own
-FastAPI server there (so POST / works exactly as the Next.js app expects)
-and mount a tiny Gradio page on /ui so the Space still has a working UI.
+Input : question (str), passages_json (str: JSON array of strings)
+Output: JSON string {"rankedIndexes": [...], "scored": n, "ms": n}
 
-Env (Space variables): MODEL_PATH, MAX_RERANK (default 40), MAX_LENGTH (256).
-NOT run in the sandbox this was written in (no torch/gradio available) —
-check the Space's Logs tab on first start.
+NOT run where it was written (no torch/gradio there) — check the Space's
+Logs tab on first start. Env: MODEL_PATH, MAX_RERANK (40), MAX_LENGTH (256).
 """
 
+import json
 import os
 import time
 
 import gradio as gr
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 from sentence_transformers import CrossEncoder
 
 from ranking import rank_with_cap
+
+try:
+    import spaces  # preinstalled on ZeroGPU Spaces
+
+    @spaces.GPU
+    def _gpu_probe():
+        return 0
+
+except ImportError:  # running somewhere else (local test) — not needed
+    pass
 
 MODEL_PATH = os.environ.get("MODEL_PATH", "yashaswee22/bharatmatrix-cross-encoder")
 MAX_RERANK = int(os.environ.get("MAX_RERANK", "40"))
 MAX_LENGTH = int(os.environ.get("MAX_LENGTH", "256"))
 MAX_PASSAGES_ACCEPTED = 300
 
-print(f"Loading model: {MODEL_PATH} (max_length={MAX_LENGTH}) …")
-model = CrossEncoder(MODEL_PATH, max_length=MAX_LENGTH)
+print(f"Loading model: {MODEL_PATH} (cpu, max_length={MAX_LENGTH}) …")
+model = CrossEncoder(MODEL_PATH, max_length=MAX_LENGTH, device="cpu")
 print("Model loaded")
 
-app = FastAPI(title="BharatMatrix cross-encoder")
 
-
-class RerankRequest(BaseModel):
-    question: str = Field(min_length=1)
-    passages: list[str] = Field(min_length=1, max_length=MAX_PASSAGES_ACCEPTED)
-
-
-def do_rank(question: str, passages: list[str]):
+def rerank(question: str, passages_json: str) -> str:
+    passages = json.loads(passages_json)
+    if not isinstance(passages, list) or not passages or len(passages) > MAX_PASSAGES_ACCEPTED:
+        raise gr.Error("passages must be a non-empty JSON array (max 300)")
     started = time.time()
     head = passages[:MAX_RERANK]
-    scores = model.predict([(question, p) for p in head])
+    scores = model.predict([(question, p) for p in head], show_progress_bar=False)
     ranked = rank_with_cap([float(s) for s in scores], len(passages))
     ms = int((time.time() - started) * 1000)
     print(f"reranked {len(head)}/{len(passages)} passages in {ms}ms")
-    return ranked, len(head), ms
-
-
-@app.post("/")
-def rerank(req: RerankRequest):
-    if not req.passages:
-        raise HTTPException(400, "passages must not be empty")
-    ranked, scored, ms = do_rank(req.question, req.passages)
-    return {"rankedIndexes": ranked, "scored": scored, "ms": ms}
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok", "model": MODEL_PATH, "max_rerank": MAX_RERANK, "max_length": MAX_LENGTH}
-
-
-def ui_fn(question: str, passages_text: str):
-    passages = [p.strip() for p in passages_text.split("\n") if p.strip()]
-    if not question.strip() or not passages:
-        return "Enter a question and one passage per line."
-    ranked, _, ms = do_rank(question, passages)
-    return f"{ms} ms\n" + "\n".join(f"{n + 1}. {passages[i]}" for n, i in enumerate(ranked))
+    return json.dumps({"rankedIndexes": ranked, "scored": len(head), "ms": ms})
 
 
 demo = gr.Interface(
-    fn=ui_fn,
-    inputs=[gr.Textbox(label="Question"), gr.Textbox(label="Passages (one per line)", lines=6)],
-    outputs=gr.Textbox(label="Ranked"),
-    title=f"BharatMatrix cross-encoder ({MODEL_PATH})",
+    fn=rerank,
+    inputs=[
+        gr.Textbox(label="Question"),
+        gr.Textbox(label='Passages as a JSON array, e.g. ["first", "second"]', lines=6),
+    ],
+    outputs=gr.Textbox(label="Result"),
+    title=f"BharatMatrix cross-encoder — {MODEL_PATH}",
+    api_name="rerank",
     flagging_mode="never",
 )
-app = gr.mount_gradio_app(app, demo, path="/ui")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    demo.launch()
