@@ -1439,3 +1439,18 @@ Known limits / decisions
 - Existing accounts keep short passwords; the new rules apply to new/changed ones.
 - Existing admin who is also a normal user account with documents: their email
   becomes admin-only, assistant disabled.
+
+## 2026-11-25 — Landing page + Content-Security-Policy (report-only), untested
+
+- Home page (`/`) is now a scrollable landing page: hero, what it does + how it
+  works, security (described in general terms only), Telegram, contact. Contact
+  email comes from env `CONTACT_EMAIL`; without it the section says details are
+  coming soon.
+- `src/middleware.ts` adds a nonce-based CSP (`script-src 'self' 'nonce-…'
+  'strict-dynamic'`, no inline/eval scripts, frame-ancestors none, object-src
+  none, etc.). It is sent as `Content-Security-Policy-Report-Only` (logs
+  violations in the browser console, blocks nothing) until `CSP_ENFORCE=true`
+  is set in Vercel. `layout.tsx` now reads the nonce for the theme script, so
+  every page renders dynamically. Not built or run here.
+  To enforce: browse every page with DevTools open, confirm no "violates the
+  following Content Security Policy" messages, then set CSP_ENFORCE=true.

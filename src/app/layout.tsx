@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Manrope, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -26,6 +27,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Set by middleware.ts; lets the inline theme script pass the CSP.
+  const nonce = headers().get("x-nonce") ?? undefined;
   return (
     <html lang="en" className="dark">
       <head>
@@ -37,6 +40,8 @@ export default function RootLayout({
           is the right tool instead of a React effect.
         */}
         <script
+          nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem("bm-theme");if(t==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}})();`,
           }}
