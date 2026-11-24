@@ -175,3 +175,29 @@ body {
     border-color: #e5e5e5 !important;
   }
 }
+
+/* Landing page: diagonal hatching (from the Lovable template look) and the
+   slow-turning wireframe cube. Colors come from the theme variables, so
+   both themes work. */
+.bm-hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(var(--ink-700) / 0.55) 0,
+    rgb(var(--ink-700) / 0.55) 1px,
+    transparent 1px,
+    transparent 8px
+  );
+}
+.bm-hatch-light {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(var(--ink-600) / 0.45) 0,
+    rgb(var(--ink-600) / 0.45) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+}
+@keyframes bm-cube-spin {
+  from { transform: rotateX(-24deg) rotateY(25deg); }
+  to { transform: rotateX(-24deg) rotateY(385deg); }
+}

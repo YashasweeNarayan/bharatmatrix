@@ -1454,3 +1454,16 @@ Known limits / decisions
   every page renders dynamically. Not built or run here.
   To enforce: browse every page with DevTools open, confirm no "violates the
   following Content Security Policy" messages, then set CSP_ENFORCE=true.
+
+## 2026-11-25 — Landing page restyled after the user's Lovable template (untested)
+
+Read the user's Lovable project ("Remix of Bug Tracker") through the Lovable
+connector (read-only: list/read files, nothing sent, no credits used). Its
+landing page is Vite + react-router + a three.js cube (react-three-fiber), so it
+cannot be dropped into this Next.js app. Ported the LOOK instead: fixed top bar,
+two-column hero with a slowly turning wireframe cube, product frame faded out at
+the bottom, bordered three-column feature grid, diagonal-hatch security band,
+big centred CTA, minimal footer. The cube is pure CSS 3D (`WireCube.tsx`) so no
+three.js/npm packages were added, and it follows the light/dark theme.
+Kept our own content (what it does, security, Telegram, contact) and our
+tokens/fonts. Not built or viewed in a browser here — check it on Vercel.
