@@ -38,7 +38,8 @@ try:
 except ImportError:  # running somewhere else (local test) — not needed
     pass
 
-MODEL_PATH = os.environ.get("MODEL_PATH", "yashaswee22/bharatmatrix-cross-encoder")
+# `or` (not a get() default) so an EMPTY Space variable also falls back.
+MODEL_PATH = os.environ.get("MODEL_PATH") or "yashaswee22/bharatmatrix-cross-encoder-v2"
 MAX_RERANK = int(os.environ.get("MAX_RERANK", "40"))
 MAX_LENGTH = int(os.environ.get("MAX_LENGTH", "256"))
 MAX_PASSAGES_ACCEPTED = 300

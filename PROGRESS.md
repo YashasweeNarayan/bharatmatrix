@@ -1349,3 +1349,10 @@ Everything is fictional; ~190 rows is a test set, not enough to move the
 model by itself. `HOW_TO_TRAIN_MORE.md` lists six ways to add data.
 The 10 earlier evaluation PDFs and their questions are copied to
 `sample-data/existing-10/` (questions only; they have no evidence spans).
+
+- Space went down after switching to the v2 model: the Space had a `MODEL_PATH`
+  variable with an EMPTY value, and `os.environ.get("MODEL_PATH", default)`
+  returns "" (not the default) when the variable exists but is empty, so
+  CrossEncoder("") loaded nothing and every request raised. App fell back to
+  Gemini meanwhile. Fixed with `os.environ.get(...) or default`; default now
+  points at the -v2 model.
