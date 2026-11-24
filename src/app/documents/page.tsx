@@ -27,8 +27,9 @@ export default async function DocumentsPage() {
           Documents
         </h1>
         <p className="mt-2 max-w-xl text-[14px] text-neutral-400">
-          Every file you&apos;ve uploaded, indexed page by page so each answer
-          can cite its exact source.
+          Everything you&apos;ve uploaded — annual reports, investor decks,
+          audit reports. BharatMatrix reads each one page by page so every
+          answer can point back to exactly where it came from.
         </p>
       </div>
 

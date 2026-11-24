@@ -27,8 +27,8 @@ export default async function TelegramPage() {
           Telegram Connect
         </h1>
         <p className="mt-2 max-w-xl text-[14px] text-neutral-400">
-          Connect Telegram once and ask from anywhere. Answers come from your
-          documents only, with the same quoted evidence.
+          Link your Telegram account once, then ask questions from the app —
+          answered the same way as here, only from your own documents.
         </p>
       </div>
 

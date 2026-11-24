@@ -15,7 +15,7 @@ export default async function Page() {
       isAdmin
     >
       <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Audit log</h1>
-      <p className="mt-2 max-w-xl text-[14px] text-neutral-400">A record of what administrators viewed or changed. Read-only.</p>
+      <p className="mt-2 max-w-xl text-[14px] text-neutral-400">What admins have viewed or changed. Read-only.</p>
       <div className="mt-6">
         <AdminAudit />
       </div>

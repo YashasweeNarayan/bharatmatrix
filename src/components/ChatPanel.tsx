@@ -251,12 +251,12 @@ export default function ChatPanel({
           <div className="flex h-full min-h-[50vh] flex-col items-center justify-center text-center">
             <MessageSquare className="h-6 w-6 text-neutral-700" />
             <p className="mt-3 text-[14px] text-neutral-400">
-              Ask your documents anything
+              Ask anything about your documents
             </p>
             <p className="mt-1 max-w-xs text-[13px] text-neutral-600">
               {readyCount === 0
-                ? "Upload a document to begin."
-                : "Every answer is drawn from your files and cites the exact passage."}
+                ? "Upload a document on the right to get started."
+                : "Answered only from what's actually in them, with the exact passage cited."}
             </p>
           </div>
         ) : (
@@ -271,8 +271,8 @@ export default function ChatPanel({
                   <p className="flex items-center gap-1.5 text-[12px] text-neutral-500">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     {t.waitStage === "waiting"
-                      ? "Ranking the most relevant passages…"
-                      : "Taking longer than usual. Switching to the backup ranker…"}
+                      ? "Trying your cross-encoder reranker…"
+                      : "Not responding in time — switching to the Gemini reranker…"}
                   </p>
                 )}
 
@@ -385,8 +385,8 @@ export default function ChatPanel({
             rows={1}
             placeholder={
               readyCount === 0
-                ? "Upload a document to start asking…"
-                : "Ask a question across your documents…"
+                ? "Upload a document first…"
+                : "Ask a question about your documents…"
             }
             className="max-h-32 min-h-[28px] flex-1 resize-none bg-transparent py-1 text-[13.5px] text-neutral-200 placeholder:text-neutral-600 focus:outline-none"
           />

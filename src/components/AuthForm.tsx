@@ -108,8 +108,8 @@ export default function AuthForm({
         {isAdmin
           ? "For authorised administrators only. Sessions last 8 hours and every sign-in is logged."
           : isSignup
-            ? "Create your workspace. Your documents and questions stay private to you."
-            : "Sign in to your workspace."}
+            ? "Your documents and questions are private to your account."
+            : "Welcome back."}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-3.5">

@@ -36,7 +36,7 @@ export default async function SettingsPage() {
           Settings
         </h1>
         <p className="mt-2 max-w-xl text-[14px] text-neutral-400">
-          Manage your profile, password and active sessions.
+          Your account at a glance.
         </p>
       </div>
 

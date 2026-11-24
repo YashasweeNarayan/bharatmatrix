@@ -32,11 +32,11 @@
   --font-inter: "Manrope", system-ui, sans-serif;
   --font-jetbrains: "IBM Plex Mono", monospace;
 
-  --ink-950: 7 10 28;
-  --ink-900: 15 21 56;
-  --ink-800: 24 30 74;
-  --ink-700: 35 42 92;
-  --ink-600: 52 62 120;
+  --ink-950: 10 11 15;
+  --ink-900: 17 19 24;
+  --ink-800: 26 29 36;
+  --ink-700: 36 40 49;
+  --ink-600: 52 58 70;
 
   --neutral-50: 250 250 250;
   --neutral-100: 245 245 245;
@@ -47,11 +47,11 @@
   --neutral-600: 82 82 82;
   --neutral-700: 64 64 64;
 
-  --saffron-400: 242 193 78;
-  --matrix-400: 169 180 255;
+  --saffron-400: 255 181 71;
+  --matrix-400: 94 234 212;
   --red-400: 248 113 113;
 
-  --body-text: 233 236 250;
+  --body-text: 233 236 241;
 }
 
 :root[data-theme="light"] {
@@ -59,11 +59,11 @@
      itself (950) just a hair off it, so cards still read as "raised."
      700/600 are real, visible hairlines against that white, not a
      near-invisible tint of it. */
-  --ink-950: 244 246 252;
+  --ink-950: 246 247 249;
   --ink-900: 255 255 255;
-  --ink-800: 229 233 247;
-  --ink-700: 200 207 232;
-  --ink-600: 156 165 200;
+  --ink-800: 231 234 238;
+  --ink-700: 203 208 215;
+  --ink-600: 160 167 177;
 
   /* Each step picked for its own legibility against white, not derived
      by reflecting the dark-mode number. */
@@ -76,8 +76,8 @@
   --neutral-600: 142 142 150;
   --neutral-700: 160 160 168;
 
-  --saffron-400: 133 90 0;
-  --matrix-400: 36 51 201;
+  --saffron-400: 146 64 14;
+  --matrix-400: 13 110 102;
   --red-400: 185 28 28;
 
   --body-text: 20 20 22;
@@ -95,7 +95,7 @@ body {
 
 /* visible keyboard focus everywhere */
 :focus-visible {
-  outline: 2px solid #f2c14e;
+  outline: 2px solid #2dd4bf;
   outline-offset: 2px;
 }
 
