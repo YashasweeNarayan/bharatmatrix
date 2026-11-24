@@ -1472,3 +1472,9 @@ tokens/fonts. Not built or viewed in a browser here — check it on Vercel.
   added ONLY the template's block: its three stacked boxes (the template's
   LOGO_VARIANT 1, same proportions), turning slowly behind the hero, as CSS 3D
   (`StackedCube.tsx`). Removed WireCube and the hatch styles.
+
+## 2026-11-25 — Reverted the cinematic landing page, colour scheme and copy pass
+
+At the user's request, commit e4260dc was reverted (git revert, history kept).
+The site is back to the state at d26887b: original colours, original wording,
+landing page with the template's stacked block behind the hero.
