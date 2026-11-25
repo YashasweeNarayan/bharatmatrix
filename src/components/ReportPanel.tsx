@@ -83,7 +83,7 @@ export default function ReportPanel({
           <div className="flex items-center gap-2">
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-1.5 rounded-lg bg-saffron-500 px-3.5 py-2 text-[13px] font-medium text-onaccent hover:bg-saffron-400"
+              className="flex items-center gap-1.5 rounded-lg bg-saffron-500 px-3.5 py-2 text-[13px] font-medium text-onaccent hover:brightness-110 active:brightness-95"
             >
               <Download className="h-3.5 w-3.5" />
               Download PDF

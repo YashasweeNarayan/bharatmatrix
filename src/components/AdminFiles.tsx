@@ -51,7 +51,7 @@ export default function AdminFiles() {
 
   if (locked) {
     return (
-      <div className="flex max-w-lg flex-col items-start gap-3 rounded-2xl border border-ink-700 bg-ink-900/40 p-6">
+      <div className="flex max-w-lg flex-col items-start gap-3 rounded-2xl border border-ink-700 bg-ink-900 p-6">
         <Lock className="h-6 w-6 text-saffron-500" />
         <h2 className="text-[15px] font-semibold text-neutral-100">This section is locked</h2>
         <p className="text-[13px] leading-relaxed text-neutral-400">
@@ -76,7 +76,7 @@ export default function AdminFiles() {
       {users.map((u) => {
         const open = openId === u.userId;
         return (
-          <div key={u.userId} className="rounded-xl border border-ink-700 bg-ink-900/40">
+          <div key={u.userId} className="rounded-xl border border-ink-700 bg-ink-900">
             <button
               onClick={() => setOpenId(open ? null : u.userId)}
               aria-expanded={open}

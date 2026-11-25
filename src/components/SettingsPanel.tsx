@@ -58,7 +58,7 @@ export default function SettingsPanel({
         initialAvatarUrl={initialAvatarUrl}
       />
 
-      <div className="rounded-2xl border border-ink-700 bg-ink-900/40 p-5">
+      <div className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
         <h2 className="text-[15px] font-semibold text-neutral-100">Account</h2>
         <dl className="mt-4 flex flex-col gap-3">
           <Row icon={Mail} label="Email" value={email} />
@@ -78,7 +78,7 @@ export default function SettingsPanel({
 
       <PasswordCard skipCurrent={canResetWithoutCurrent} />
 
-      <div className="rounded-2xl border border-ink-700 bg-ink-900/40 p-5">
+      <div className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
         <h2 className="text-[15px] font-semibold text-neutral-100">
           Session
         </h2>
@@ -88,7 +88,7 @@ export default function SettingsPanel({
         <button
           onClick={logout}
           disabled={loggingOut}
-          className="mt-4 flex items-center gap-2 rounded-lg border border-ink-700 bg-ink-900/60 px-4 py-2 text-[13px] font-medium text-neutral-300 transition-colors hover:border-red-500/50 hover:text-red-400 disabled:opacity-50"
+          className="mt-4 flex items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-4 py-2 text-[13px] font-medium text-neutral-300 transition-colors hover:border-red-500/50 hover:text-red-400 disabled:opacity-50"
         >
           {loggingOut ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -201,7 +201,7 @@ function ProfileCard({
   }
 
   return (
-    <div className="rounded-2xl border border-ink-700 bg-ink-900/40 p-5">
+    <div className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
       <h2 className="text-[15px] font-semibold text-neutral-100">Profile</h2>
       <p className="mt-1 text-[13px] text-neutral-500">
         Shown in the header and sidebar instead of your email.
@@ -214,7 +214,7 @@ function ProfileCard({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-900/60 px-3 py-1.5 text-[12.5px] text-neutral-300 transition-colors hover:border-saffron-500 hover:text-saffron-400 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-900 px-3 py-1.5 text-[12.5px] text-neutral-300 transition-colors hover:border-saffron-500 hover:text-saffron-400 disabled:opacity-50"
             >
               {uploadingAvatar ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -269,7 +269,7 @@ function ProfileCard({
             }}
             placeholder={email}
             maxLength={40}
-            className="flex-1 rounded-lg border border-ink-700 bg-ink-900/60 px-3 py-2 text-[13px] text-neutral-200 placeholder:text-neutral-600 focus:border-saffron-500"
+            className="flex-1 rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 text-[13px] text-neutral-200 placeholder:text-neutral-600 focus:border-saffron-500"
           />
           <button
             onClick={saveUsername}
@@ -278,7 +278,7 @@ function ProfileCard({
               "flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12.5px] font-medium transition-colors",
               savingName || username === (initialUsername ?? "")
                 ? "cursor-not-allowed bg-ink-800 text-neutral-600"
-                : "bg-saffron-500 text-onaccent hover:bg-saffron-400",
+                : "bg-saffron-500 text-onaccent hover:brightness-110 active:brightness-95",
             )}
           >
             {savingName ? (
@@ -343,7 +343,7 @@ function PasswordCard({ skipCurrent }: { skipCurrent: boolean }) {
   }
 
   return (
-    <div className="rounded-2xl border border-ink-700 bg-ink-900/40 p-5">
+    <div className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
       <h2 className="text-[15px] font-semibold text-neutral-100">Password</h2>
       <p className="mt-1 text-[13px] text-neutral-500">
         Change the password you sign in with.
@@ -381,7 +381,7 @@ function PasswordCard({ skipCurrent }: { skipCurrent: boolean }) {
           className={clsx(
             "mt-1 flex items-center justify-center gap-1.5 self-start rounded-lg px-4 py-2 text-[13px] font-medium transition-colors",
             canSubmit
-              ? "bg-saffron-500 text-onaccent hover:bg-saffron-400"
+              ? "bg-saffron-500 text-onaccent hover:brightness-110 active:brightness-95"
               : "cursor-not-allowed bg-ink-800 text-neutral-600",
           )}
         >
@@ -421,7 +421,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete="new-password"
-        className="rounded-lg border border-ink-700 bg-ink-900/60 px-3 py-2 text-[13px] text-neutral-200 focus:border-saffron-500"
+        className="rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 text-[13px] text-neutral-200 focus:border-saffron-500"
       />
       {hint && !error && (
         <p className="text-[11px] text-neutral-600">{hint}</p>

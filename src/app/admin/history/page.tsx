@@ -14,7 +14,7 @@ export default async function Page() {
       avatarUrl={user.avatarUrl}
       isAdmin
     >
-      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">User History</h1>
+      <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-neutral-50 md:text-[2rem]">User History</h1>
       <p className="mt-2 max-w-xl text-[14px] text-neutral-400">Every user&apos;s conversations. Answers and quoted passages are shown; file names and files are not.</p>
       <div className="mt-6">
         <AdminHistory />

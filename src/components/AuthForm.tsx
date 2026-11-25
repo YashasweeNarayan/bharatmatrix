@@ -86,10 +86,10 @@ export default function AuthForm({
   const q = dest !== "/workspace" ? `?next=${encodeURIComponent(dest)}` : "";
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
+    <div className="rise mx-auto flex min-h-screen max-w-[22rem] flex-col justify-center px-6 py-16">
       <Link
         href="/"
-        className="mb-8 flex w-fit items-center gap-2.5 text-[15px] font-semibold tracking-tight text-neutral-100"
+        className="mx-auto mb-10 flex w-fit items-center gap-2.5 text-[15px] font-semibold tracking-tight text-neutral-100"
       >
         <span className="grid h-6 w-6 grid-cols-2 grid-rows-2 gap-[2px]">
           <span className="rounded-[2px] bg-saffron-500" />
@@ -100,11 +100,11 @@ export default function AuthForm({
         BharatMatrix
       </Link>
 
-      <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-neutral-50">
+      <h1 className="flex items-center justify-center gap-2 text-center text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-neutral-50">
         {isAdmin && <ShieldCheck className="h-5 w-5 text-saffron-500" />}
         {isAdmin ? "Admin login" : isSignup ? "Create your account" : "Log in"}
       </h1>
-      <p className="mt-1.5 text-[13px] text-neutral-400">
+      <p className="mt-2 text-center text-[15px] leading-relaxed text-neutral-400">
         {isAdmin
           ? "For authorised administrators only. Sessions last 8 hours and every sign-in is logged."
           : isSignup
@@ -112,7 +112,7 @@ export default function AuthForm({
             : "Welcome back."}
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-3.5">
+      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className="text-[13px] text-neutral-400">Email</span>
           <input
@@ -121,7 +121,7 @@ export default function AuthForm({
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-[14px] text-neutral-100 outline-none transition-colors focus:border-saffron-500"
+            className="rounded-xl border border-ink-700 bg-ink-900 px-4 py-3 text-[15px] text-neutral-50 outline-none transition-[border-color,box-shadow] placeholder:text-neutral-600 focus:border-saffron-500 focus:ring-4 focus:ring-saffron-500/15"
             placeholder="you@company.com"
           />
         </label>
@@ -146,7 +146,7 @@ export default function AuthForm({
             autoComplete={isSignup ? "new-password" : "current-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-[14px] text-neutral-100 outline-none transition-colors focus:border-saffron-500"
+            className="rounded-xl border border-ink-700 bg-ink-900 px-4 py-3 text-[15px] text-neutral-50 outline-none transition-[border-color,box-shadow] placeholder:text-neutral-600 focus:border-saffron-500 focus:ring-4 focus:ring-saffron-500/15"
             placeholder={isSignup ? "At least 10 characters" : "••••••••"}
           />
           {isSignup && (
@@ -168,7 +168,7 @@ export default function AuthForm({
         <button
           type="submit"
           disabled={submitting}
-          className="mt-1.5 flex items-center justify-center gap-2 rounded-full bg-saffron-500 px-5 py-2.5 text-[13px] font-medium text-onaccent transition-colors hover:bg-saffron-400 disabled:opacity-60"
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-saffron-500 px-5 py-3 text-[15px] font-medium text-onaccent transition-all hover:brightness-110 active:brightness-95 disabled:opacity-60"
         >
           {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {isAdmin ? "Log in as admin" : isSignup ? "Sign up" : "Log in"}
@@ -183,7 +183,7 @@ export default function AuthForm({
             </div>
             <a
               href={googleHref}
-              className="flex items-center justify-center gap-2.5 rounded-full border border-ink-700 bg-ink-900 px-5 py-2.5 text-[13px] font-medium text-neutral-200 transition-colors hover:border-neutral-500"
+              className="flex items-center justify-center gap-2.5 rounded-full border border-ink-700 bg-ink-900 px-5 py-3 text-[15px] font-medium text-neutral-100 transition-colors hover:border-ink-600 hover:bg-ink-800"
             >
               <GoogleIcon />
               Continue with Google
@@ -193,7 +193,7 @@ export default function AuthForm({
       </form>
 
       {isSignup && (
-        <p className="mt-5 text-[12px] leading-relaxed text-neutral-600">
+        <p className="mt-6 text-center text-[12px] leading-relaxed text-neutral-500">
           Platform administrators can read the questions you ask and the
           answers you receive, to support and improve the service. They
           cannot open your uploaded files without a two-person approval.
@@ -201,18 +201,18 @@ export default function AuthForm({
       )}
 
       {!isAdmin && (
-        <p className="mt-6 text-[13px] text-neutral-500">
+        <p className="mt-8 text-center text-[14px] text-neutral-500">
           {isSignup ? (
             <>
               Already have an account?{" "}
-              <Link href={`/login${q}`} className="text-neutral-300 hover:text-white">
+              <Link href={`/login${q}`} className="text-neutral-100 underline-offset-4 hover:underline">
                 Log in
               </Link>
             </>
           ) : (
             <>
               New here?{" "}
-              <Link href={`/signup${q}`} className="text-neutral-300 hover:text-white">
+              <Link href={`/signup${q}`} className="text-neutral-100 underline-offset-4 hover:underline">
                 Create an account
               </Link>
             </>
@@ -220,9 +220,9 @@ export default function AuthForm({
         </p>
       )}
       {isAdmin && (
-        <p className="mt-6 text-[13px] text-neutral-500">
+        <p className="mt-8 text-center text-[14px] text-neutral-500">
           Not an admin?{" "}
-          <Link href="/login" className="text-neutral-300 hover:text-white">
+          <Link href="/login" className="text-neutral-100 underline-offset-4 hover:underline">
             Back to login
           </Link>
         </p>

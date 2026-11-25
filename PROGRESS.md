@@ -1478,3 +1478,23 @@ tokens/fonts. Not built or viewed in a browser here — check it on Vercel.
 At the user's request, commit e4260dc was reverted (git revert, history kept).
 The site is back to the state at d26887b: original colours, original wording,
 landing page with the template's stacked block behind the hero.
+
+## 2026-11-25 — Apple-style visual redesign (branch redesign/apple-ui, not merged)
+
+Visual-only pass; no logic, API, auth or routing changed.
+- Design tokens: true-black / graphite dark theme and a clean white light theme
+  (text steps re-picked to pass 4.5:1 on white), Inter instead of Manrope,
+  larger radius scale, softer shadows, Apple-style easing, pressed-state on
+  buttons, frosted headers, thin scrollbars, dotted texture removed.
+- Landing page: centred hero with large type, entrance animation, scroll reveals
+  (`Reveal.tsx`, no-JS and reduced-motion safe), card hover lift, restyled
+  sections and footer. The template's stacked block is kept (shown from 1360px up
+  so it no longer sits under the headline).
+- Sign-in / admin / reset pages centred with larger inputs and a focus ring.
+- App shell, sidebar, chat composer and bubbles, documents panel restyled.
+- Fixed: `hover:bg-saffron-400` turned buttons brown in light mode (now brightness),
+  and the header "Sign up" button was unreadable in light mode.
+- Checked by rendering the real components in headless Chromium with stubs
+  (Tailwind v4 as stand-in): landing (dark/light/mobile), login, workspace shell.
+  Not run through `next build`; Matrix, Evaluation, Settings and admin screens
+  only get the token-level changes and were not rendered.

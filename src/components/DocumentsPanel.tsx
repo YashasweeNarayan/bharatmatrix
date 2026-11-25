@@ -243,7 +243,7 @@ export default function DocumentsPanel({
   return (
     <div
       className={clsx(
-        "flex flex-col rounded-2xl border border-ink-700 bg-ink-900/40",
+        "flex flex-col rounded-3xl border border-ink-700 bg-ink-900",
         compact && "h-full min-h-[70vh]",
       )}
     >

@@ -23,7 +23,7 @@ export default async function MatrixPage() {
       isAdmin={user.isAdmin}
     >
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-neutral-50 md:text-[2rem]">
           Matrix
         </h1>
         <p className="mt-2 max-w-xl text-[14px] text-neutral-400">

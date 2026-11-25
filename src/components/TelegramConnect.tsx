@@ -89,7 +89,7 @@ export default function TelegramConnect() {
   }
 
   return (
-    <div className="rounded-2xl border border-ink-700 bg-ink-900/40 p-5">
+    <div className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
       <div className="flex items-center gap-2">
         <MessageCircle className="h-4 w-4 text-saffron-500" />
         <h2 className="text-[15px] font-semibold text-neutral-100">
@@ -165,7 +165,7 @@ export default function TelegramConnect() {
       <button
         onClick={generateCode}
         disabled={loading}
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-ink-700 bg-ink-900/60 px-3 py-2 text-[12.5px] text-neutral-400 transition-colors hover:border-saffron-500 hover:text-saffron-400"
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 text-[12.5px] text-neutral-400 transition-colors hover:border-saffron-500 hover:text-saffron-400"
       >
         <RefreshCw className={clsx("h-3 w-3", loading && "animate-spin")} />
         New code

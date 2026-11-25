@@ -40,7 +40,7 @@ export default function AppShell({
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 flex-shrink-0 items-center gap-3 border-b border-ink-700 bg-ink-950/85 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-20 flex h-14 flex-shrink-0 items-center gap-3 glass border-b border-ink-700/60 px-4 md:px-6">
           {!open && (
             <button
               onClick={() => setOpen(true)}
@@ -53,10 +53,10 @@ export default function AppShell({
           {!open && (
             <span className="flex items-center gap-2.5 text-[14px] font-semibold tracking-tight text-neutral-100">
               <span className="grid h-5 w-5 flex-shrink-0 grid-cols-2 grid-rows-2 gap-[2px]">
-                <span className="rounded-[2px] bg-saffron-500" />
-                <span className="rounded-[2px] bg-matrix-500" />
-                <span className="rounded-[2px] bg-matrix-500" />
-                <span className="rounded-[2px] bg-saffron-500" />
+                <span className="rounded-[3px] bg-saffron-500" />
+                <span className="rounded-[3px] bg-matrix-500" />
+                <span className="rounded-[3px] bg-matrix-500" />
+                <span className="rounded-[3px] bg-saffron-500" />
               </span>
               BharatMatrix
             </span>
@@ -78,7 +78,7 @@ export default function AppShell({
           </div>
         </header>
 
-        <main className="mx-auto min-w-0 flex-1 px-4 py-8 md:px-8 lg:w-full lg:max-w-[1400px] lg:px-10">
+        <main className="mx-auto min-w-0 flex-1 px-4 py-8 md:px-8 md:py-10 lg:w-full lg:max-w-[1400px] lg:px-10">
           {children}
         </main>
       </div>

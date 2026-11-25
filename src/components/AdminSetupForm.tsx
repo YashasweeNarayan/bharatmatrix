@@ -33,14 +33,14 @@ export default function AdminSetupForm() {
   }
 
   const input =
-    "rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-[14px] text-neutral-100 outline-none focus:border-saffron-500";
+    "rounded-xl border border-ink-700 bg-ink-900 px-4 py-3 text-[15px] text-neutral-50 outline-none transition-[border-color,box-shadow] placeholder:text-neutral-600 focus:border-saffron-500 focus:ring-4 focus:ring-saffron-500/15";
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <h1 className="text-xl font-semibold tracking-tight text-neutral-50">
+    <div className="rise mx-auto flex min-h-screen max-w-[22rem] flex-col justify-center px-6 py-16">
+      <h1 className="text-center text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-neutral-50">
         Admin setup
       </h1>
-      <p className="mt-1.5 text-[13px] text-neutral-400">
+      <p className="mt-2 text-center text-[15px] leading-relaxed text-neutral-400">
         One-time password creation for an admin email. Needs the setup key from
         the deployment settings.
       </p>
@@ -62,7 +62,7 @@ export default function AdminSetupForm() {
               {error}
             </p>
           )}
-          <button disabled={busy} className="flex items-center justify-center gap-2 rounded-full bg-saffron-500 px-5 py-2.5 text-[13px] font-medium text-onaccent hover:bg-saffron-400 disabled:opacity-60">
+          <button disabled={busy} className="flex items-center justify-center gap-2 rounded-full bg-saffron-500 px-5 py-3 text-[15px] font-medium text-onaccent hover:brightness-110 active:brightness-95 disabled:opacity-60">
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Create admin password
           </button>

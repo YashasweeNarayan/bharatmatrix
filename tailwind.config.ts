@@ -62,6 +62,21 @@ const config: Config = {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains)", "monospace"],
       },
+      borderRadius: {
+        DEFAULT: "0.375rem",
+        md: "0.5rem",
+        lg: "0.75rem",
+        xl: "1rem",
+        "2xl": "1.375rem",
+        "3xl": "1.75rem",
+      },
+      boxShadow: {
+        card: "0 1px 2px rgb(0 0 0 / 0.04), 0 10px 30px -12px rgb(0 0 0 / 0.18)",
+        float: "0 40px 90px -36px rgb(0 0 0 / 0.5)",
+      },
+      transitionTimingFunction: {
+        DEFAULT: "cubic-bezier(0.28, 0.11, 0.32, 1)",
+      },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         shimmer: "shimmer 2s linear infinite",

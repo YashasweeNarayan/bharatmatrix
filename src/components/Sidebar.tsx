@@ -81,13 +81,13 @@ export default function Sidebar({
         <div
           onClick={onClose}
           aria-hidden
-          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-[2px] lg:hidden"
         />
       )}
 
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-ink-900/95 backdrop-blur transition-all duration-300 ease-in-out lg:static lg:z-auto lg:backdrop-blur-0",
+          "fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-ink-900/85 backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.28,0.11,0.32,1)] lg:static lg:z-auto lg:backdrop-blur-0",
           open
             ? "translate-x-0 border-r border-ink-700"
             : "-translate-x-full border-r border-ink-700 lg:w-0 lg:translate-x-0 lg:overflow-hidden lg:border-r-0",
@@ -99,10 +99,10 @@ export default function Sidebar({
             className="flex items-center gap-2.5 text-[14px] font-semibold tracking-tight text-neutral-100"
           >
             <span className="grid h-6 w-6 flex-shrink-0 grid-cols-2 grid-rows-2 gap-[2px]">
-              <span className="rounded-[2px] bg-saffron-500" />
-              <span className="rounded-[2px] bg-matrix-500" />
-              <span className="rounded-[2px] bg-matrix-500" />
-              <span className="rounded-[2px] bg-saffron-500" />
+              <span className="rounded-[3px] bg-saffron-500" />
+              <span className="rounded-[3px] bg-matrix-500" />
+              <span className="rounded-[3px] bg-matrix-500" />
+              <span className="rounded-[3px] bg-saffron-500" />
             </span>
             BharatMatrix
           </Link>
@@ -124,9 +124,9 @@ export default function Sidebar({
                 key={item.href}
                 href={item.href}
                 className={clsx(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13.5px] font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13.5px] font-medium transition-colors duration-200",
                   active
-                    ? "bg-ink-800 text-neutral-50"
+                    ? "bg-ink-800 text-neutral-50 shadow-[inset_0_0_0_1px_rgb(var(--ink-700)/0.6)]"
                     : "text-neutral-400 hover:bg-ink-800/60 hover:text-neutral-100",
                 )}
               >

@@ -241,7 +241,7 @@ export default function ChatPanel({
   const anyLoading = turns.some((t) => t.status === "loading");
 
   return (
-    <div className="flex h-full min-h-[70vh] flex-col rounded-2xl border border-ink-700 bg-ink-900/40">
+    <div className="flex h-full min-h-[70vh] flex-col overflow-hidden rounded-3xl border border-ink-700 bg-ink-900">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6">
         {loadingHistory ? (
           <div className="flex h-full min-h-[50vh] items-center justify-center">
@@ -262,8 +262,8 @@ export default function ChatPanel({
         ) : (
           <div className="mx-auto flex max-w-[640px] flex-col gap-6">
             {turns.map((t) => (
-              <div key={t.id} className="flex flex-col gap-2.5">
-                <div className="self-end rounded-2xl rounded-br-sm bg-ink-800 px-4 py-2.5 text-[13.5px] text-neutral-100">
+              <div key={t.id} className="flex animate-fade-in-up flex-col gap-3">
+                <div className="max-w-[85%] self-end rounded-[1.25rem] rounded-br-md bg-saffron-500 px-4 py-2.5 text-[14.5px] leading-snug text-onaccent">
                   {t.question}
                 </div>
 
@@ -281,9 +281,9 @@ export default function ChatPanel({
                 )}
 
                 {t.status === "done" && t.result && (
-                  <div className="rounded-2xl rounded-bl-sm border border-ink-700 bg-ink-900/60 p-4">
+                  <div className="rounded-[1.25rem] rounded-bl-md border border-ink-700 bg-ink-950 p-5">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-[14px] leading-relaxed text-neutral-200">
+                      <p className="text-[14.5px] leading-relaxed text-neutral-100">
                         {t.result.answer}
                       </p>
                       <span
@@ -346,7 +346,7 @@ export default function ChatPanel({
                             ? "cursor-default border-matrix-500/30 bg-matrix-500/10 text-matrix-400"
                             : t.movingToMatrix
                               ? "cursor-not-allowed border-ink-700 bg-ink-800 text-neutral-600"
-                              : "border-ink-700 bg-ink-900/60 text-neutral-300 hover:border-saffron-500 hover:text-saffron-400",
+                              : "border-ink-700 bg-ink-900 text-neutral-300 hover:border-saffron-500 hover:text-saffron-400",
                         )}
                       >
                         {t.movingToMatrix ? (
@@ -370,8 +370,8 @@ export default function ChatPanel({
         )}
       </div>
 
-      <div className="border-t border-ink-700 p-3">
-        <div className="mx-auto flex max-w-[640px] items-end gap-2 rounded-xl border border-ink-700 bg-ink-900/60 px-3 py-2 focus-within:border-saffron-500">
+      <div className="border-t border-ink-700 p-4">
+        <div className="mx-auto flex max-w-[640px] items-end gap-2 rounded-[1.375rem] border border-ink-700 bg-ink-950 py-2 pl-4 pr-2 transition-[border-color,box-shadow] focus-within:border-saffron-500 focus-within:ring-4 focus-within:ring-saffron-500/15">
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -388,17 +388,17 @@ export default function ChatPanel({
                 ? "Upload a document first…"
                 : "Ask a question about your documents…"
             }
-            className="max-h-32 min-h-[28px] flex-1 resize-none bg-transparent py-1 text-[13.5px] text-neutral-200 placeholder:text-neutral-600 focus:outline-none"
+            className="max-h-32 min-h-[28px] flex-1 resize-none bg-transparent py-1 text-[14.5px] text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
           />
           <button
             onClick={ask}
             disabled={disabled || !question.trim() || anyLoading}
             aria-label="Ask"
             className={clsx(
-              "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors",
+              "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-colors",
               disabled || !question.trim() || anyLoading
                 ? "cursor-not-allowed bg-ink-800 text-neutral-600"
-                : "bg-saffron-500 text-onaccent hover:bg-saffron-400",
+                : "bg-saffron-500 text-onaccent hover:brightness-110 active:brightness-95",
             )}
           >
             {anyLoading ? (

@@ -29,58 +29,56 @@
  * color deliberately left out of this system entirely.
  */
 :root {
-  --font-inter: "Manrope", system-ui, sans-serif;
+  --font-inter: "Inter", system-ui, sans-serif;
   --font-jetbrains: "IBM Plex Mono", monospace;
+  --ease-apple: cubic-bezier(0.28, 0.11, 0.32, 1);
 
-  --ink-950: 10 11 15;
-  --ink-900: 17 19 24;
-  --ink-800: 26 29 36;
-  --ink-700: 36 40 49;
-  --ink-600: 52 58 70;
+  /* Dark: true black page, graphite cards, quiet hairlines. */
+  --ink-950: 0 0 0;
+  --ink-900: 22 22 23;
+  --ink-800: 32 32 34;
+  --ink-700: 48 48 51;
+  --ink-600: 72 72 76;
 
-  --neutral-50: 250 250 250;
-  --neutral-100: 245 245 245;
-  --neutral-200: 229 229 229;
-  --neutral-300: 212 212 212;
-  --neutral-400: 163 163 163;
-  --neutral-500: 115 115 115;
-  --neutral-600: 82 82 82;
-  --neutral-700: 64 64 64;
+  --neutral-50: 245 245 247;
+  --neutral-100: 245 245 247;
+  --neutral-200: 224 224 229;
+  --neutral-300: 210 210 215;
+  --neutral-400: 161 161 166;
+  --neutral-500: 134 134 139;
+  --neutral-600: 110 110 115;
+  --neutral-700: 66 66 69;
 
   --saffron-400: 255 181 71;
   --matrix-400: 94 234 212;
   --red-400: 248 113 113;
 
-  --body-text: 233 236 241;
+  --body-text: 245 245 247;
 }
 
 :root[data-theme="light"] {
-  /* Card (900) is the lightest surface — pure white — with the page
-     itself (950) just a hair off it, so cards still read as "raised."
-     700/600 are real, visible hairlines against that white, not a
-     near-invisible tint of it. */
-  --ink-950: 246 247 249;
+  /* Page is a hair off white, cards are pure white, hairlines are real. */
+  --ink-950: 251 251 253;
   --ink-900: 255 255 255;
-  --ink-800: 231 234 238;
-  --ink-700: 203 208 215;
-  --ink-600: 160 167 177;
+  --ink-800: 245 245 247;
+  --ink-700: 214 214 219;
+  --ink-600: 174 174 178;
 
-  /* Each step picked for its own legibility against white, not derived
-     by reflecting the dark-mode number. */
-  --neutral-50: 20 20 22;
-  --neutral-100: 38 38 41;
-  --neutral-200: 61 61 66;
-  --neutral-300: 82 82 89;
-  --neutral-400: 107 107 115;
-  --neutral-500: 128 128 136;
-  --neutral-600: 142 142 150;
-  --neutral-700: 160 160 168;
+  /* Text steps chosen for contrast on white (400 and 500 pass 4.5:1). */
+  --neutral-50: 29 29 31;
+  --neutral-100: 29 29 31;
+  --neutral-200: 51 51 54;
+  --neutral-300: 66 66 69;
+  --neutral-400: 99 99 104;
+  --neutral-500: 110 110 115;
+  --neutral-600: 122 122 128;
+  --neutral-700: 174 174 178;
 
-  --saffron-400: 146 64 14;
+  --saffron-400: 176 80 0;
   --matrix-400: 13 110 102;
   --red-400: 185 28 28;
 
-  --body-text: 20 20 22;
+  --body-text: 29 29 31;
 }
 
 html {
@@ -90,7 +88,77 @@ html {
 body {
   background-color: rgb(var(--ink-950));
   color: rgb(var(--body-text));
-  transition: background-color 0.2s ease, color 0.2s ease;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s var(--ease-apple), color 0.3s var(--ease-apple);
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: rgb(255 159 28 / 0.28);
+}
+
+/* Thin, quiet scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--ink-600)) transparent;
+}
+
+/* Pressed feedback on every button. */
+button:not(:disabled) {
+  transition-property: color, background-color, border-color, opacity, transform, filter;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-apple);
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Frosted bars (site header, app header). */
+.glass {
+  background-color: rgb(var(--ink-950) / 0.72);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+}
+
+/* Entrance on page load; delays are set inline. */
+@keyframes bm-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: none; }
+}
+.rise {
+  animation: bm-rise 0.9s var(--ease-apple) both;
+}
+
+/* Scroll reveal (components/Reveal.tsx adds data-reveal after mount, so
+   content stays visible without JavaScript). */
+[data-reveal] {
+  transition: opacity 0.8s var(--ease-apple), transform 0.8s var(--ease-apple);
+}
+[data-reveal="hidden"] {
+  opacity: 0;
+  transform: translateY(20px);
+}
+[data-reveal="shown"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Card that lifts slightly on hover (landing page). */
+.lift {
+  transition: transform 0.4s var(--ease-apple), border-color 0.4s var(--ease-apple),
+    box-shadow 0.4s var(--ease-apple);
+}
+.lift:hover {
+  transform: translateY(-3px);
+  border-color: rgb(var(--ink-600));
+  box-shadow: 0 18px 40px -22px rgb(0 0 0 / 0.35);
 }
 
 /* visible keyboard focus everywhere */
@@ -110,21 +178,9 @@ body {
   }
 }
 
+/* Kept as a no-op so existing markup stays valid; the dotted texture was removed. */
 .bg-grain {
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    rgba(255, 255, 255, 0.045) 1px,
-    transparent 0
-  );
-  background-size: 22px 22px;
-}
-
-:root[data-theme="light"] .bg-grain {
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    rgba(10, 11, 15, 0.05) 1px,
-    transparent 0
-  );
+  background-image: none;
 }
 
 /*

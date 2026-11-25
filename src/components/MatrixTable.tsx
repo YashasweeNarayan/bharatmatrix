@@ -273,7 +273,7 @@ export default function MatrixTable() {
             if (e.key === "Enter") addQuestion();
           }}
           placeholder="Add a question as a new column, e.g. What was the revenue?"
-          className="min-w-[280px] flex-1 rounded-lg border border-ink-700 bg-ink-900/60 px-3.5 py-2.5 text-[13px] text-neutral-200 placeholder:text-neutral-600 focus:border-saffron-500"
+          className="min-w-[280px] flex-1 rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-[13px] text-neutral-200 placeholder:text-neutral-600 focus:border-saffron-500"
         />
         <button
           onClick={addQuestion}
@@ -282,7 +282,7 @@ export default function MatrixTable() {
             "flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-medium transition-colors",
             !newQuestion.trim() || addingQuestion
               ? "cursor-not-allowed bg-ink-800 text-neutral-600"
-              : "bg-saffron-500 text-onaccent hover:bg-saffron-400",
+              : "bg-saffron-500 text-onaccent hover:brightness-110 active:brightness-95",
           )}
         >
           {addingQuestion ? (
@@ -419,7 +419,7 @@ export default function MatrixTable() {
             Click a filled cell to see the exact passage it was answered from.
           </p>
         ) : (
-          <div className="mt-3 rounded-lg border border-ink-700 bg-ink-900/60 p-4">
+          <div className="mt-3 rounded-lg border border-ink-700 bg-ink-900 p-4">
             <div className="flex items-start justify-between gap-3">
               <p className="text-[14px] leading-relaxed text-neutral-200">
                 {String(selected.answer ?? "")}

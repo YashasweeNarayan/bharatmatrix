@@ -14,7 +14,7 @@ export default async function Page() {
       avatarUrl={user.avatarUrl}
       isAdmin
     >
-      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Audit log</h1>
+      <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-neutral-50 md:text-[2rem]">Audit log</h1>
       <p className="mt-2 max-w-xl text-[14px] text-neutral-400">What admins have viewed or changed. Read-only.</p>
       <div className="mt-6">
         <AdminAudit />

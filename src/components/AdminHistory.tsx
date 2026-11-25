@@ -63,7 +63,7 @@ export default function AdminHistory() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[260px_280px_1fr]">
-      <section className={clsx("rounded-2xl border border-ink-700 bg-ink-900/40 p-3", user && "hidden lg:block")}>
+      <section className={clsx("rounded-2xl border border-ink-700 bg-ink-900 p-3", user && "hidden lg:block")}>
         <label className="flex items-center gap-2 rounded-lg border border-ink-700 px-2.5 py-1.5 focus-within:border-saffron-500">
           <Search className="h-3.5 w-3.5 text-neutral-600" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search users" className="w-full bg-transparent text-[13px] text-neutral-200 outline-none placeholder:text-neutral-600" />
@@ -82,7 +82,7 @@ export default function AdminHistory() {
         </div>
       </section>
 
-      <section className={clsx("rounded-2xl border border-ink-700 bg-ink-900/40 p-3", (!user || convId) && "hidden lg:block")}>
+      <section className={clsx("rounded-2xl border border-ink-700 bg-ink-900 p-3", (!user || convId) && "hidden lg:block")}>
         {!user ? (
           <p className="p-3 text-[12.5px] text-neutral-600">Pick a user to see their chats.</p>
         ) : (
@@ -110,7 +110,7 @@ export default function AdminHistory() {
         )}
       </section>
 
-      <section className={clsx("min-h-[40vh] rounded-2xl border border-ink-700 bg-ink-900/40 p-4", !convId && "hidden lg:block")}>
+      <section className={clsx("min-h-[40vh] rounded-2xl border border-ink-700 bg-ink-900 p-4", !convId && "hidden lg:block")}>
         {convId && (
           <button onClick={() => setConvId(null)} className="mb-3 flex items-center gap-1.5 text-[12px] text-neutral-500 hover:text-neutral-200 lg:hidden">
             <ArrowLeft className="h-3.5 w-3.5" /> Chats
@@ -124,7 +124,7 @@ export default function AdminHistory() {
             {turns.map((t) => (
               <div key={t.id} className="flex flex-col gap-2">
                 <p className="self-end rounded-2xl rounded-br-sm bg-ink-800 px-4 py-2.5 text-[13.5px] text-neutral-100">{t.question}</p>
-                <div className="rounded-2xl rounded-bl-sm border border-ink-700 bg-ink-900/60 p-4">
+                <div className="rounded-2xl rounded-bl-sm border border-ink-700 bg-ink-900 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-neutral-200">{t.answer}</p>
                     <span className={clsx("flex-shrink-0 rounded-full px-2 py-0.5 text-[11px]", t.grounded ? "bg-matrix-500/10 text-matrix-400" : "bg-red-500/10 text-red-400")}>
