@@ -1478,3 +1478,11 @@ tokens/fonts. Not built or viewed in a browser here — check it on Vercel.
 At the user's request, commit e4260dc was reverted (git revert, history kept).
 The site is back to the state at d26887b: original colours, original wording,
 landing page with the template's stacked block behind the hero.
+
+## 2026-11-26 — Fixed-height workspace
+
+The page no longer grows with uploads. The app shell is one screen tall: sidebar and
+header stay put; on desktop the chat (composer pinned at the bottom) and the documents
+panel scroll independently; on phones the panels stack at a fixed height. Other pages
+scroll inside the content area under the header. Print rules release the fixed height.
+Checked in headless Chromium with 45 documents and a 14-turn chat (not via `next build`).

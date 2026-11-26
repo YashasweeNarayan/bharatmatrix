@@ -21,7 +21,10 @@ export default function Workspace({
   const filenameById = Object.fromEntries(docs.map((d) => [d.id, d.filename]));
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
+    // On desktop the two panels fill the screen below the header (3.5rem) and the
+    // page padding (4rem) and each scrolls on its own; on smaller screens they
+    // stack at a fixed height and the page scrolls.
+    <div className="grid grid-cols-1 gap-6 lg:h-[calc(100dvh-7.75rem)] lg:grid-cols-[1fr_360px] lg:grid-rows-[minmax(0,1fr)]">
       <ChatPanel
         readyCount={readyCount}
         filenameById={filenameById}
