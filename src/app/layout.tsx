@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Manrope, IBM_Plex_Mono } from "next/font/google";
+import { Manrope, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-apple",
+  display: "swap",
+});
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -48,7 +54,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${manrope.variable} ${plexMono.variable} font-sans antialiased`}
+        className={`${manrope.variable} ${inter.variable} ${plexMono.variable} font-sans antialiased`}
       >
         {children}
       </body>

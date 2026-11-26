@@ -18,13 +18,13 @@ export default function HeaderAuthControls({
       <div className="flex items-center gap-3">
         <Link
           href="/login"
-          className="rounded-full px-4 py-2 text-[13px] font-medium text-neutral-300 transition-colors hover:text-white"
+          className="rounded-full px-3 py-2 text-[13px] font-medium text-neutral-400 transition-colors hover:text-neutral-50"
         >
           Log in
         </Link>
         <Link
           href="/signup"
-          className="rounded-full bg-neutral-100 px-4 py-2 text-[13px] font-medium text-onaccent transition-colors hover:bg-white"
+          className="rounded-full bg-saffron-500 px-4 py-1.5 text-[13px] font-medium text-onaccent transition-all hover:brightness-110 active:scale-[0.98]"
         >
           Sign up
         </Link>
@@ -34,12 +34,12 @@ export default function HeaderAuthControls({
 
   return (
     <div className="flex items-center gap-3">
-      <span className="hidden text-[13px] text-neutral-500 sm:inline">
+      <span className="hidden max-w-[200px] truncate text-[13px] text-neutral-500 lg:inline">
         {email}
       </span>
       <Link
         href="/workspace"
-        className="rounded-full bg-neutral-100 px-4 py-2 text-[13px] font-medium text-onaccent transition-colors hover:bg-white"
+        className="rounded-full bg-saffron-500 px-4 py-1.5 text-[13px] font-medium text-onaccent transition-all hover:brightness-110 active:scale-[0.98]"
       >
         Open workspace
       </Link>
@@ -53,7 +53,7 @@ export default function HeaderAuthControls({
         disabled={loggingOut}
         title="Log out"
         aria-label="Log out"
-        className="rounded-full border border-ink-700 p-2 text-neutral-400 transition-colors hover:border-ink-600 hover:text-white disabled:opacity-50"
+        className="rounded-full border border-ink-700 p-2 text-neutral-400 transition-colors hover:border-ink-600 hover:text-neutral-50 disabled:opacity-50"
       >
         <LogOut className="h-3.5 w-3.5" />
       </button>

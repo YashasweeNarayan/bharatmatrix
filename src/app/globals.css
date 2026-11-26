@@ -218,3 +218,109 @@ body {
   from { transform: rotateX(27deg) rotateY(45deg); }
   to { transform: rotateX(27deg) rotateY(405deg); }
 }
+
+/* ------------------------------------------------------------------
+ * Landing page (Apple-inspired). Everything below is scoped to
+ * `.landing` so the signed-in app keeps its existing look. To revert,
+ * revert the "Apple-style landing page" commit.
+ * ------------------------------------------------------------------ */
+.landing {
+  --font-inter: var(--font-apple), system-ui, sans-serif;
+  --ease-apple: cubic-bezier(0.28, 0.11, 0.32, 1);
+
+  --ink-950: 0 0 0;
+  --ink-900: 22 22 23;
+  --ink-800: 32 32 34;
+  --ink-700: 48 48 51;
+  --ink-600: 72 72 76;
+
+  --neutral-50: 245 245 247;
+  --neutral-100: 245 245 247;
+  --neutral-200: 224 224 229;
+  --neutral-300: 210 210 215;
+  --neutral-400: 161 161 166;
+  --neutral-500: 134 134 139;
+  --neutral-600: 110 110 115;
+  --neutral-700: 66 66 69;
+
+  --body-text: 245 245 247;
+  color: rgb(var(--body-text));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:root[data-theme="light"] .landing {
+  --ink-950: 251 251 253;
+  --ink-900: 255 255 255;
+  --ink-800: 245 245 247;
+  --ink-700: 214 214 219;
+  --ink-600: 174 174 178;
+
+  --neutral-50: 29 29 31;
+  --neutral-100: 29 29 31;
+  --neutral-200: 51 51 54;
+  --neutral-300: 66 66 69;
+  --neutral-400: 99 99 104;
+  --neutral-500: 110 110 115;
+  --neutral-600: 122 122 128;
+  --neutral-700: 174 174 178;
+
+  --body-text: 29 29 31;
+}
+
+.landing h1,
+.landing h2,
+.landing h3 {
+  text-wrap: balance;
+}
+.landing p {
+  text-wrap: pretty;
+}
+
+/* Frosted header */
+.landing .glass {
+  background-color: rgb(var(--ink-950) / 0.72);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+}
+
+/* Entrance on page load; delays are set inline. */
+@keyframes bm-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: none; }
+}
+.landing .rise {
+  animation: bm-rise 0.9s var(--ease-apple) both;
+}
+
+/* Scroll reveal (components/Reveal.tsx adds data-reveal after mount, so
+   content stays visible without JavaScript). */
+.landing [data-reveal] {
+  transition: opacity 0.8s var(--ease-apple), transform 0.8s var(--ease-apple);
+}
+.landing [data-reveal="hidden"] {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.landing [data-reveal="shown"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Card that lifts slightly on hover. */
+.landing .lift {
+  transition: transform 0.4s var(--ease-apple), border-color 0.4s var(--ease-apple),
+    box-shadow 0.4s var(--ease-apple);
+}
+.landing .lift:hover {
+  transform: translateY(-3px);
+  border-color: rgb(var(--ink-600));
+  box-shadow: 0 18px 40px -22px rgb(0 0 0 / 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .rise { animation: none; }
+  .landing [data-reveal] { transition: none; }
+  .landing [data-reveal="hidden"] { opacity: 1; transform: none; }
+  .landing .lift:hover { transform: none; }
+}

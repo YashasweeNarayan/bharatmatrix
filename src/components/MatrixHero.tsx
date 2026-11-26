@@ -91,30 +91,34 @@ export default function MatrixHero() {
 
   return (
     <div
-      className="w-full overflow-hidden rounded-2xl border border-ink-700 bg-ink-900/80 shadow-2xl shadow-black/40"
+      className="w-full overflow-hidden rounded-[1.75rem] border border-ink-700 bg-ink-900 text-left shadow-[0_40px_90px_-36px_rgb(0_0_0/0.5)]"
       role="img"
       aria-label="Animated preview of the BharatMatrix grid resolving document answers with sources"
     >
-      <div className="flex items-center justify-between border-b border-ink-700 bg-ink-800/60 px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-saffron-500" />
-          <span className="text-[13px] text-neutral-400">
+      <div className="flex items-center justify-between gap-3 border-b border-ink-700 bg-ink-800/60 px-5 py-3.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span aria-hidden className="flex gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-ink-600" />
+            <span className="h-2.5 w-2.5 rounded-full bg-ink-600" />
+            <span className="h-2.5 w-2.5 rounded-full bg-ink-600" />
+          </span>
+          <span className="truncate text-[13px] font-medium text-neutral-300">
             ABC Technologies — Matrix
           </span>
         </div>
-        <span className="font-mono text-[11px] text-neutral-500">
+        <span className="flex-shrink-0 font-mono text-[11px] text-neutral-500">
           4 docs · 3 questions
         </span>
       </div>
 
       <div className="grid grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] text-sm">
-        <div className="border-b border-r border-ink-700 bg-ink-800/40 px-4 py-2.5 text-[12px] font-medium text-neutral-500">
+        <div className="border-b border-r border-ink-700 bg-ink-800/40 px-3 py-3 text-[12px] font-medium text-neutral-500 sm:px-5">
           Document
         </div>
         {COLS.map((col) => (
           <div
             key={col}
-            className="border-b border-r border-ink-700 bg-ink-800/40 px-4 py-2.5 text-[12px] font-medium text-neutral-500 last:border-r-0"
+            className="border-b border-r border-ink-700 bg-ink-800/40 px-3 py-3 text-[12px] font-medium text-neutral-500 sm:px-5 last:border-r-0"
           >
             {col}
           </div>
@@ -123,7 +127,7 @@ export default function MatrixHero() {
         {ROWS.map((row, r) => (
           <Fragment key={row}>
             <div
-              className="truncate border-b border-r border-ink-700 px-4 py-3 font-mono text-[12px] text-neutral-400"
+              className="truncate border-b border-r border-ink-700 px-3 py-4 font-mono text-[11.5px] text-neutral-400 sm:px-5 sm:text-[12px]"
               title={row}
             >
               {row}
@@ -134,7 +138,7 @@ export default function MatrixHero() {
               return (
                 <div
                   key={col + row}
-                  className="relative border-b border-r border-ink-700 px-4 py-3 last:border-r-0"
+                  className="relative border-b border-r border-ink-700 px-3 py-4 last:border-r-0 sm:px-5"
                 >
                   {state === "idle" && (
                     <span className="inline-block h-3 w-16 rounded bg-ink-700/70" />
@@ -146,10 +150,10 @@ export default function MatrixHero() {
                     </span>
                   )}
                   {state === "filled" && (
-                    <span className="flex items-baseline gap-1.5">
+                    <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                       <span
                         className={clsx(
-                          "text-[13px]",
+                          "min-w-0 break-words text-[13px] sm:text-[14px]",
                           cell.flag === "conflict"
                             ? "text-red-400"
                             : "text-neutral-200",
