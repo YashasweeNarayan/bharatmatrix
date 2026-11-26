@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
 import { adminOrResponse, audit } from "@/lib/adminGuard";
 import { isUuid } from "@/lib/security";
+import { citationsOf } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,9 +38,10 @@ export async function GET(
     answer: r.answer,
     grounded: r.grounded,
     created_at: r.created_at,
-    citations: ((r.citations as { pageLabel?: string; quote?: string }[]) ?? []).map(
-      (c) => ({ pageLabel: c.pageLabel ?? "", quote: c.quote ?? "" }),
-    ),
+    citations: citationsOf(r).map((c) => ({
+      pageLabel: c.pageLabel ?? "",
+      quote: c.quote ?? "",
+    })),
   }));
   await audit(g.admin, "view_conversation", `${conv[0].email}:${params.id}`);
   return NextResponse.json({ conversation: conv[0], turns });

@@ -1492,3 +1492,7 @@ Checked in headless Chromium with 45 documents and a 14-turn chat (not via `next
 Scrollbars (documents list, chat, sidebar) are now thin, track-less and use the theme's
 hairline colour instead of the bright native white bar; `color-scheme` follows the theme
 so other native controls match too.
+
+## History crash fix
+- Opening a past chat from History crashed the page ("Application error: a client-side exception"). Cause: `postgres` (postgres.js) re-encodes a string passed with `::jsonb`, so `chat_turns.citations` was stored as a JSON *string* (`"[]"`), and ChatPanel called `.map` on it.
+- Reads now go through `citationsOf` (ChatPanel, `/api/history/[id]`, admin conversation view), so existing rows open fine. New turns are written with `sql.json(...)`, so they're stored as real arrays.

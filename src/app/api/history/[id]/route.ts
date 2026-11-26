@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
 import { requireUser, UnauthorizedError } from "@/lib/auth";
 import { isUuid, sameOrigin } from "@/lib/security";
+import { citationsOf } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,10 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       from chat_turns where conversation_id = ${params.id}
       order by created_at asc
     `;
-    return NextResponse.json({ conversation: conv[0], turns });
+    // Older rows stored citations as a JSON string rather than an array;
+    // hand the client a real array either way.
+    const safeTurns = turns.map((t) => ({ ...t, citations: citationsOf(t) }));
+    return NextResponse.json({ conversation: conv[0], turns: safeTurns });
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Not signed in." }, { status: 401 });

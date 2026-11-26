@@ -10,6 +10,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import clsx from "clsx";
+import { citationsOf } from "@/lib/types";
 
 type Citation = {
   documentId: string;
@@ -111,7 +112,7 @@ export default function ChatPanel({
             question: string;
             answer: string;
             grounded: boolean;
-            citations: Citation[];
+            citations: unknown;
           }[];
         };
         if (cancelled) return;
@@ -124,7 +125,7 @@ export default function ChatPanel({
             result: {
               answer: t.answer,
               grounded: t.grounded,
-              citations: t.citations ?? [],
+              citations: citationsOf(t),
             },
             error: null,
             movingToMatrix: false,
@@ -320,7 +321,7 @@ export default function ChatPanel({
                       </p>
                     )}
 
-                    {t.result.citations.length > 0 && (
+                    {t.result.citations?.length > 0 && (
                       <div className="mt-4 flex flex-col gap-2 border-t border-ink-700 pt-3">
                         {t.result.citations.map((c, i) => (
                           <div key={i} className="text-[12px]">

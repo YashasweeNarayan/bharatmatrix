@@ -48,7 +48,7 @@ export async function saveChatTurn(
       (conversation_id, user_id, question, answer, grounded, citations, reranker)
     values (
       ${convId}, ${userId}, ${turn.question}, ${turn.answer}, ${turn.grounded},
-      ${JSON.stringify(turn.citations ?? [])}::jsonb, ${turn.reranker ?? null}
+      ${sql.json((turn.citations ?? []) as Parameters<typeof sql.json>[0])}, ${turn.reranker ?? null}
     )
   `;
   await sql`update chat_conversations set updated_at = now() where id = ${convId}`;
