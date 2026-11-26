@@ -29,7 +29,7 @@ export default function AppShell({
   );
 
   return (
-    <div className="bg-grain flex min-h-screen bg-ink-950">
+    <div className="app-shell flex h-[100dvh] overflow-hidden bg-ink-950">
       <Sidebar
         email={email}
         username={username}
@@ -39,7 +39,7 @@ export default function AppShell({
         onClose={() => setOpen(false)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 flex-shrink-0 items-center gap-3 glass border-b border-ink-700/60 px-4 md:px-6">
           {!open && (
             <button
@@ -78,8 +78,12 @@ export default function AppShell({
           </div>
         </header>
 
-        <main className="mx-auto min-w-0 flex-1 px-4 py-8 md:px-8 md:py-10 lg:w-full lg:max-w-[1400px] lg:px-10">
-          {children}
+        {/* The page itself never scrolls: the header and sidebar stay put and
+            this area scrolls on its own. Workspace splits it further. */}
+        <main className="app-main min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto min-w-0 px-4 py-8 md:px-8 md:py-10 lg:w-full lg:max-w-[1400px] lg:px-10">
+            {children}
+          </div>
         </main>
       </div>
     </div>

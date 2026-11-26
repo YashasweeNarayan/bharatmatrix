@@ -241,7 +241,7 @@ export default function ChatPanel({
   const anyLoading = turns.some((t) => t.status === "loading");
 
   return (
-    <div className="flex h-full min-h-[70vh] flex-col overflow-hidden rounded-3xl border border-ink-700 bg-ink-900">
+    <div className="flex h-[75dvh] min-h-0 flex-col overflow-hidden lg:h-full rounded-3xl border border-ink-700 bg-ink-900">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6">
         {loadingHistory ? (
           <div className="flex h-full min-h-[50vh] items-center justify-center">

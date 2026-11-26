@@ -244,7 +244,7 @@ export default function DocumentsPanel({
     <div
       className={clsx(
         "flex flex-col rounded-3xl border border-ink-700 bg-ink-900",
-        compact && "h-full min-h-[70vh]",
+        compact && "h-[60dvh] min-h-0 lg:h-full",
       )}
     >
       <div
@@ -330,7 +330,7 @@ export default function DocumentsPanel({
         />
       </div>
 
-      <div className={clsx("flex-1 p-2", compact && "overflow-y-auto")}>
+      <div className={clsx("flex-1 p-2", compact && "min-h-0 overflow-y-auto")}>
         {loading && (
           <p className="px-3 py-6 text-center text-[13px] text-neutral-500">
             Loading documents…

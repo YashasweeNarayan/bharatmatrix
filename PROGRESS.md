@@ -1498,3 +1498,14 @@ Visual-only pass; no logic, API, auth or routing changed.
   (Tailwind v4 as stand-in): landing (dark/light/mobile), login, workspace shell.
   Not run through `next build`; Matrix, Evaluation, Settings and admin screens
   only get the token-level changes and were not rendered.
+
+## 2026-11-26 — Fixed-height workspace (branch redesign/apple-ui)
+
+The page no longer grows with uploads. The app shell is exactly one screen tall:
+sidebar and header stay put, and on desktop the chat and the documents panel each
+scroll on their own (composer stays at the bottom of the chat). On phones the
+panels stack at a fixed height and the content area scrolls. Other pages (Matrix,
+Documents, Settings, admin) scroll inside the content area under the header.
+Printing the report still works (print rules release the fixed height).
+Checked in headless Chromium with 45 documents and a 14-turn chat: page height
+equals viewport height, both panels scroll independently.

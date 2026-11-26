@@ -87,7 +87,7 @@ export default function Sidebar({
 
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-ink-900/85 backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.28,0.11,0.32,1)] lg:static lg:z-auto lg:backdrop-blur-0",
+          "fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-ink-900/85 backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.28,0.11,0.32,1)] lg:static lg:z-auto lg:min-h-0 lg:backdrop-blur-0",
           open
             ? "translate-x-0 border-r border-ink-700"
             : "-translate-x-full border-r border-ink-700 lg:w-0 lg:translate-x-0 lg:overflow-hidden lg:border-r-0",

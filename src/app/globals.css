@@ -194,6 +194,13 @@ button:not(:disabled):active {
  * theme the rest of the app uses.
  */
 @media print {
+  /* The app shell is a fixed-height, inner-scrolling layout on screen. */
+  .app-shell,
+  .app-main {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
   body * {
     visibility: hidden;
   }
