@@ -83,6 +83,36 @@
   --body-text: 20 20 22;
 }
 
+/* Native controls (scrollbars, form widgets) follow the active theme. */
+:root {
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Thin scrollbars in the theme's own hairline colour with no track, so the
+   document list, chat and sidebar scroll without a bright white bar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--ink-600)) transparent;
+}
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--ink-600));
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 9999px;
+  }
+}
+
 html {
   scroll-behavior: smooth;
 }

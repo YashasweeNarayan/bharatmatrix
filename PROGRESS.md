@@ -1486,3 +1486,9 @@ header stay put; on desktop the chat (composer pinned at the bottom) and the doc
 panel scroll independently; on phones the panels stack at a fixed height. Other pages
 scroll inside the content area under the header. Print rules release the fixed height.
 Checked in headless Chromium with 45 documents and a 14-turn chat (not via `next build`).
+
+## 2026-11-26 — Dark scrollbars
+
+Scrollbars (documents list, chat, sidebar) are now thin, track-less and use the theme's
+hairline colour instead of the bright native white bar; `color-scheme` follows the theme
+so other native controls match too.
